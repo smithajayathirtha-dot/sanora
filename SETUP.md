@@ -47,6 +47,12 @@ snack, bowel movement (and how many times), nap (and how long), notes, and the t
 Tap an answer again to clear it. There is one note per child per day; saving again updates it.
 The "Today's notes" list shows which children still need one. Parents see the note at the top of that day, above the photos.
 
+## Check-in / check-out
+Parents check their child in at drop-off and out at pick-up from the top of their screen.
+The date defaults to today and the time to now, and both can be changed. The parent types their name and signs with a finger.
+The button switches to **Check out** once the child is checked in, and a check-out time earlier than the check-in time is rejected.
+Teachers see every child's entries for any date in the **Check-in** tab: times, the parent's name and signature, and how many children are here now.
+
 ## Parent sign-in
 Parents open https://sanorakids.vercel.app/app/ (or the **Sign in** button on the home page) and sign in with the email the teacher entered.
 They only see photos of their own children, organized by day. They can tap a photo to view it full size and save it.
@@ -59,4 +65,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes table and their access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables and their access rules.

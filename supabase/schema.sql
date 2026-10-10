@@ -145,6 +145,38 @@ drop policy if exists "parent read own notes" on public.daily_notes;
 create policy "parent read own notes" on public.daily_notes
   for select to authenticated using (public.is_parent_of(child_id));
 
+-- Check-in / check-out, signed by the parent (one row per child per day)
+create table if not exists public.attendance (
+  id                 uuid primary key default gen_random_uuid(),
+  child_id           uuid not null references public.children(id) on delete cascade,
+  att_date           date not null,
+  check_in           time,
+  check_in_name      text,
+  check_in_sig       text,              -- signature as a PNG data URL
+  check_in_by        text,              -- signed-in email that made the entry
+  check_out          time,
+  check_out_name     text,
+  check_out_sig      text,
+  check_out_by       text,
+  updated_at         timestamptz not null default now(),
+  unique (child_id, att_date)
+);
+alter table public.attendance enable row level security;
+
+drop policy if exists "staff all attendance" on public.attendance;
+create policy "staff all attendance" on public.attendance
+  for all to authenticated using (public.is_staff()) with check (public.is_staff());
+
+drop policy if exists "parent read own attendance"   on public.attendance;
+drop policy if exists "parent insert own attendance" on public.attendance;
+drop policy if exists "parent update own attendance" on public.attendance;
+create policy "parent read own attendance" on public.attendance
+  for select to authenticated using (public.is_parent_of(child_id));
+create policy "parent insert own attendance" on public.attendance
+  for insert to authenticated with check (public.is_parent_of(child_id));
+create policy "parent update own attendance" on public.attendance
+  for update to authenticated using (public.is_parent_of(child_id)) with check (public.is_parent_of(child_id));
+
 -- Private storage bucket for the photo files
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', false)

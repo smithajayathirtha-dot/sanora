@@ -56,13 +56,27 @@
   .avatar{width:38px;height:38px;border-radius:50%;background:var(--petal-soft);color:#c25570;display:grid;place-items:center;font-weight:700;flex:none}
   .kid .who{display:flex;gap:12px;align-items:center;min-width:0}
   nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-  nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
-  nav.tabs button{background:none;border:0;font:inherit;font-size:.78rem;font-weight:700;color:var(--muted);padding:10px 0 12px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+  nav.tabs .wrap{display:grid;grid-template-columns:repeat(5,1fr)}
+  nav.tabs button{background:none;border:0;font:inherit;font-size:.72rem;font-weight:700;color:var(--muted);padding:10px 0 12px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
   nav.tabs button svg{width:22px;height:22px}
   nav.tabs button[aria-current="page"]{color:var(--leaf)}
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
+  .sigwrap{position:relative;border:1px solid var(--line);border-radius:12px;background:#fff;height:150px;overflow:hidden}
+  .sigwrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+  .sighint{position:absolute;left:14px;bottom:12px;color:#b8c0ba;font-size:.9rem;pointer-events:none}
+  .sigclear{position:absolute;top:4px;right:4px;font-size:.85rem}
+  .sigwrap::after{content:"";position:absolute;left:14px;right:14px;bottom:34px;border-bottom:1px dashed #d8ddd9;pointer-events:none}
+  .att{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:4px 12px;padding:8px 0;border-top:1px solid var(--line)}
+  .att:first-of-type{border-top:0}
+  .att .k{font-weight:700;font-size:.85rem;color:var(--muted);width:30px}
+  .att .t{font-weight:700}
+  .att .t small{display:block;font-weight:400;color:var(--muted);font-size:.82rem}
+  .att img{height:40px;max-width:120px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}
+  .att .none{color:var(--muted);font-weight:400}
+  .attline{display:flex;gap:16px;flex-wrap:wrap;font-size:.92rem;color:var(--ink);background:var(--petal-soft);border-radius:12px;padding:8px 12px;margin-bottom:10px}
+  .attline span{color:var(--muted)}
   textarea{width:100%;font:inherit;font-size:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);resize:vertical}
   .q{margin-top:14px}
   .q:first-child{margin-top:0}
@@ -146,6 +160,16 @@
     <div id="login-msg"></div>
   </section>
 
+  <!-- Attendance (teacher) -->
+  <section id="v-att" hidden>
+    <h1>Check-in / out</h1>
+    <p class="hint">Drop-off and pick-up entries signed by parents.</p>
+    <label for="ta-date">Date</label>
+    <input id="ta-date" type="date">
+    <p class="hint" id="ta-sum" style="margin:14px 0 10px"></p>
+    <div id="ta-list"></div>
+  </section>
+
   <!-- Upload -->
   <section id="v-upload" hidden>
     <h1>Upload photos</h1>
@@ -207,6 +231,22 @@
   <section id="v-parent" hidden>
     <h1 id="pa-title">Your child's photos</h1>
     <p class="hint">Daily notes and photos from your child's teachers. Tap a photo to see it full size or save it.</p>
+    <div class="card" id="att-card">
+      <h2 class="ftitle">Check-in / Check-out</h2>
+      <p class="hint" id="att-status" style="margin:2px 0 0"></p>
+      <div id="att-child-wrap"><label for="att-child">Child</label><select id="att-child"></select></div>
+      <div class="seg" id="att-kind" style="margin-top:14px"><button type="button" data-v="in">Check in</button><button type="button" data-v="out">Check out</button></div>
+      <div class="row">
+        <div><label for="att-date">Date</label><input id="att-date" type="date"></div>
+        <div><label for="att-time">Time</label><input id="att-time" type="time"></div>
+      </div>
+      <label for="att-name">Your name</label>
+      <input id="att-name" autocomplete="name">
+      <label>Signature</label>
+      <div class="sigwrap"><canvas id="att-sig" aria-label="Sign here"></canvas><span class="sighint" id="att-sighint">Sign here with your finger</span><button class="link sigclear" id="att-clear" type="button">Clear</button></div>
+      <button class="btn" id="att-save" type="button">Check in</button>
+      <div id="att-msg"></div>
+    </div>
     <select id="pa-filter" aria-label="Show photos for" hidden></select>
     <div id="pa-list"></div>
     <div class="empty" id="pa-empty" hidden>Nothing yet. Daily notes and photos will appear here as soon as a teacher adds them.</div>
@@ -240,6 +280,7 @@
 <nav class="tabs" id="tabs" hidden><div class="wrap">
   <button data-tab="photos" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photos</button>
   <button data-tab="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M8 12h8M8 16h5"/></svg>Daily note</button>
+  <button data-tab="att"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Check-in</button>
   <button data-tab="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Upload</button>
   <button data-tab="kids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg>Children</button>
 </div></nav>
@@ -265,7 +306,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const cfg = window.SANORA_CONFIG || {};
-  const views = ["setup", "login", "photos", "notes", "upload", "kids", "parent"];
+  const views = ["setup", "login", "photos", "notes", "att", "upload", "kids", "parent"];
   const show = (v) => views.forEach((x) => ($("v-" + x).hidden = x !== v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
@@ -340,6 +381,7 @@
     document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-current", b.dataset.tab === t ? "page" : "false"));
     if (t === "photos") loadLibrary();
     if (t === "notes") loadNotes();
+    if (t === "att") loadTeacherAtt();
     updateBar();
   }
   document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => go(b.dataset.tab)));
@@ -676,6 +718,119 @@
     return `<div class="note"><h3>Daily note</h3>${rows.map(([k, v]) => `<div class="nrow"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}${n.notes ? `<p>${esc(n.notes)}</p>` : ""}${n.teacher_name ? `<div class="sign">— ${esc(n.teacher_name)}</div>` : ""}</div>`;
   }
 
+  // ---------- check-in / check-out ----------
+  const nowTime = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+  const hm = (t) => (t ? String(t).slice(0, 5) : "");
+  const fmtTime = (t) => { if (!t) return ""; const [h, m] = hm(t).split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+  let attRows = [], attKind = "in";
+
+  // Signature pad
+  const sig = { canvas: $("att-sig"), ctx: null, dirty: false, drawing: false, last: null };
+  function sizeSig() {
+    const c = sig.canvas, r = c.getBoundingClientRect(); if (!r.width) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+    sig.ctx = c.getContext("2d"); sig.ctx.scale(dpr, dpr);
+    sig.ctx.lineWidth = 2.4; sig.ctx.lineCap = "round"; sig.ctx.lineJoin = "round"; sig.ctx.strokeStyle = "#1d2b4f";
+    sig.dirty = false; $("att-sighint").hidden = false;
+  }
+  const pt = (e) => { const r = sig.canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  sig.canvas.addEventListener("pointerdown", (e) => {
+    if (!sig.ctx) sizeSig();
+    sig.drawing = true; sig.last = pt(e); sig.canvas.setPointerCapture(e.pointerId);
+    sig.ctx.beginPath(); sig.ctx.arc(sig.last.x, sig.last.y, 1.1, 0, Math.PI * 2); sig.ctx.fillStyle = "#1d2b4f"; sig.ctx.fill();
+    sig.dirty = true; $("att-sighint").hidden = true; say("att-msg", ""); e.preventDefault();
+  });
+  sig.canvas.addEventListener("pointermove", (e) => {
+    if (!sig.drawing) return;
+    const p = pt(e); sig.ctx.beginPath(); sig.ctx.moveTo(sig.last.x, sig.last.y); sig.ctx.lineTo(p.x, p.y); sig.ctx.stroke(); sig.last = p; e.preventDefault();
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => sig.canvas.addEventListener(ev, () => { sig.drawing = false; }));
+  $("att-clear").addEventListener("click", sizeSig);
+  window.addEventListener("resize", () => { if (!$("v-parent").hidden && !sig.dirty) sizeSig(); });
+  function sigData() {
+    // Crop to a white-background PNG at most 600px wide to keep rows small
+    const c = sig.canvas, k = Math.min(1, 600 / c.width);
+    const out = document.createElement("canvas"); out.width = Math.round(c.width * k); out.height = Math.round(c.height * k);
+    const o = out.getContext("2d"); o.fillStyle = "#fff"; o.fillRect(0, 0, out.width, out.height); o.drawImage(c, 0, 0, out.width, out.height);
+    return out.toDataURL("image/png");
+  }
+
+  const attFor = (cid, d) => attRows.find((r) => r.child_id === cid && r.att_date === d);
+  const parentName = () => { const m = (me && me.user_metadata) || {}; return m.full_name || m.name || ""; };
+  function setupAttendance() {
+    $("att-child").innerHTML = children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    $("att-child-wrap").hidden = children.length < 2;
+    $("att-card").hidden = !children.length;
+    $("att-date").value = today(); $("att-time").value = nowTime();
+    if (!$("att-name").value) $("att-name").value = parentName();
+    autoKind();
+    requestAnimationFrame(sizeSig);
+  }
+  function autoKind() {
+    const r = attFor($("att-child").value, $("att-date").value);
+    attKind = r && r.check_in && !r.check_out ? "out" : "in";
+    paintKind();
+  }
+  function paintKind() {
+    $("att-kind").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === attKind));
+    $("att-save").textContent = attKind === "in" ? "Check in" : "Check out";
+    const r = attFor($("att-child").value, $("att-date").value);
+    const kid = kidById($("att-child").value);
+    const who = kid ? kid.name : "Your child";
+    const when = $("att-date").value === today() ? "today" : `on ${niceDate($("att-date").value)}`;
+    $("att-status").textContent = !r ? `${who} isn't checked in ${when} yet.`
+      : `${who} ${when}: in ${r.check_in ? fmtTime(r.check_in) : "—"} · out ${r.check_out ? fmtTime(r.check_out) : "—"}`;
+  }
+  $("att-kind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; attKind = b.dataset.v; paintKind(); say("att-msg", ""); });
+  $("att-child").addEventListener("change", () => { autoKind(); say("att-msg", ""); });
+  $("att-date").addEventListener("change", () => { autoKind(); say("att-msg", ""); });
+  $("att-save").addEventListener("click", async () => {
+    const cid = $("att-child").value, d = $("att-date").value, t = $("att-time").value, name = $("att-name").value.trim();
+    if (!cid || !d || !t) { say("att-msg", "Choose the date and time.", "err"); return; }
+    if (d > today()) { say("att-msg", "The date can't be in the future.", "err"); return; }
+    if (!name) { say("att-msg", "Enter your name.", "err"); return; }
+    if (!sig.dirty) { say("att-msg", "Please sign in the box.", "err"); return; }
+    const r = attFor(cid, d);
+    if (attKind === "out" && r && r.check_in && t < hm(r.check_in)) { say("att-msg", `Check-out can't be before check-in (${fmtTime(r.check_in)}).`, "err"); return; }
+    if (attKind === "in" && r && r.check_out && t > hm(r.check_out)) { say("att-msg", `Check-in can't be after check-out (${fmtTime(r.check_out)}).`, "err"); return; }
+    const k = attKind === "in" ? "check_in" : "check_out";
+    const row = { child_id: cid, att_date: d, [k]: t, [k + "_name"]: name, [k + "_sig"]: sigData(), [k + "_by"]: me ? me.email : null, updated_at: new Date().toISOString() };
+    $("att-save").disabled = true;
+    const { error } = await sb.from("attendance").upsert(row, { onConflict: "child_id,att_date" });
+    $("att-save").disabled = false;
+    if (error) { say("att-msg", error.message, "err"); return; }
+    const kid = kidById(cid);
+    say("att-msg", `${kid ? kid.name : "Child"} checked ${attKind} at ${fmtTime(t)}. The teacher can see it now.`);
+    await loadParentAtt();
+    $("att-time").value = nowTime(); sizeSig(); autoKind(); renderParent();
+  });
+  async function loadParentAtt() {
+    const { data } = await sb.from("attendance").select("child_id,att_date,check_in,check_out,check_in_name,check_out_name").order("att_date", { ascending: false }).limit(400);
+    attRows = data || [];
+  }
+
+  // Teacher view
+  async function loadTeacherAtt() {
+    if (!$("ta-date").value) $("ta-date").value = today();
+    $("ta-list").innerHTML = `<div class="empty">Loading…</div>`;
+    const { data, error } = await sb.from("attendance").select("*").eq("att_date", $("ta-date").value);
+    if (error) { $("ta-list").innerHTML = ""; $("ta-sum").textContent = error.message; return; }
+    const by = new Map((data || []).map((r) => [r.child_id, r]));
+    const inNow = children.filter((c) => by.get(c.id)?.check_in && !by.get(c.id)?.check_out).length;
+    const came = children.filter((c) => by.get(c.id)?.check_in).length;
+    $("ta-sum").textContent = children.length ? `${came} of ${children.length} checked in · ${inNow} here now` : "Add children first.";
+    const cell = (r, k, label) => r && r[k]
+      ? `<div class="k">${label}</div><div class="t">${fmtTime(r[k])}<small>${esc(r[k + "_name"] || "")}</small></div>${r[k + "_sig"] ? `<img src="${esc(r[k + "_sig"])}" alt="Signature of ${esc(r[k + "_name"] || "parent")}">` : "<span></span>"}`
+      : `<div class="k">${label}</div><div class="t none">Not yet</div><span></span>`;
+    $("ta-list").innerHTML = children.map((c) => {
+      const r = by.get(c.id);
+      return `<div class="card"><div class="ghead" style="margin-bottom:6px"><div class="who"><div class="avatar">${esc((c.name[0] || "?").toUpperCase())}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)}</span></div></div></div>
+        <div class="att">${cell(r, "check_in", "In")}</div><div class="att">${cell(r, "check_out", "Out")}</div></div>`;
+    }).join("");
+  }
+  $("ta-date").addEventListener("change", loadTeacherAtt);
+
   // ---------- parent view ----------
   let paPhotos = [], paNotes = [], paUrls = new Map(), lbPhoto = null;
   async function enterParent() {
@@ -686,6 +841,7 @@
     if (error) { $("pa-list").innerHTML = ""; say("pa-msg", error.message, "err"); return; }
     children = kids || [];
     $("pa-title").textContent = children.length === 1 ? `${children[0].name}'s day` : "Your children's day";
+    setupAttendance();
     $("pa-filter").hidden = children.length < 2;
     $("pa-filter").innerHTML = `<option value="">All children</option>` + children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
     const [res, nres] = await Promise.all([
@@ -694,6 +850,8 @@
     ]);
     if (res.error) { $("pa-list").innerHTML = ""; say("pa-msg", res.error.message, "err"); return; }
     paPhotos = res.data || []; paNotes = nres.data || [];
+    await loadParentAtt();
+    setupAttendance();
     for (let i = 0; i < paPhotos.length; i += 100) {
       const { data: signed } = await sb.storage.from("photos").createSignedUrls(paPhotos.slice(i, i + 100).map((p) => p.path), 3600);
       (signed || []).forEach((x) => x.signedUrl && paUrls.set(x.path, x.signedUrl));
@@ -706,11 +864,13 @@
     const photos = paPhotos.filter((p) => !only || p.child_id === only);
     const notes = paNotes.filter((n) => !only || n.child_id === only);
     const noteFor = new Map(notes.map((n) => [n.note_date + "|" + n.child_id, n]));
-    const dates = [...new Set([...photos.map((p) => p.taken_on), ...notes.map((n) => n.note_date)])].sort().reverse();
+    const atts = attRows.filter((a) => !only || a.child_id === only);
+    const attOf = new Map(atts.map((a) => [a.att_date + "|" + a.child_id, a]));
+    const dates = [...new Set([...photos.map((p) => p.taken_on), ...notes.map((n) => n.note_date), ...atts.map((a) => a.att_date)])].sort().reverse();
     $("pa-empty").hidden = dates.length > 0;
     const many = children.length > 1;
     $("pa-list").innerHTML = dates.map((d) => {
-      const kidIds = [...new Set([...photos.filter((p) => p.taken_on === d).map((p) => p.child_id), ...notes.filter((n) => n.note_date === d).map((n) => n.child_id)])]
+      const kidIds = [...new Set([...photos.filter((p) => p.taken_on === d).map((p) => p.child_id), ...notes.filter((n) => n.note_date === d).map((n) => n.child_id), ...atts.filter((a) => a.att_date === d).map((a) => a.child_id)])]
         .sort((a, b) => (kidById(a)?.name || "").localeCompare(kidById(b)?.name || ""));
       return `<div class="day"><h2>${esc(dayLabel(d))}</h2>` + kidIds.map((cid) => {
         const ps = photos.filter((p) => p.taken_on === d && p.child_id === cid);
@@ -718,7 +878,9 @@
         const kid = kidById(cid);
         const head = many && kid ? `<div class="ghead" style="margin-bottom:10px"><div class="who"><div class="avatar">${esc((kid.name[0] || "?").toUpperCase())}</div><div><b>${esc(kid.name)}</b>${ps.length ? `<span>${ps.length} photo${ps.length > 1 ? "s" : ""}</span>` : ""}</div></div></div>` : "";
         const thumbs = ps.length ? `<div class="thumbs" style="${note ? "" : "margin-top:0"}">${ps.map((p) => `<button class="thumb" data-pid="${p.id}"><img loading="lazy" src="${esc(paUrls.get(p.path) || "")}" alt="Photo"></button>`).join("")}</div>` : "";
-        return `<div class="group">${head}${note ? noteHtml(note) : ""}${thumbs}</div>`;
+        const a = attOf.get(d + "|" + cid);
+        const attline = a ? `<div class="attline"><div><span>In</span> <b>${a.check_in ? fmtTime(a.check_in) : "—"}</b></div><div><span>Out</span> <b>${a.check_out ? fmtTime(a.check_out) : "—"}</b></div></div>` : "";
+        return `<div class="group">${head}${attline}${note ? noteHtml(note) : ""}${thumbs}</div>`;
       }).join("") + `</div>`;
     }).join("");
   }
