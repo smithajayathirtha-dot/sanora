@@ -47,7 +47,8 @@ the children, photos, notes and check-ins of their own center. The database enfo
    A filter shows one child's photos. To share, tap photos in one child's group, or tap "Select all", then tap **Share**.
    Pick WhatsApp in the share sheet, then the parent's chat. The photos are marked **Sent**.
    - On a desktop browser that can't share files, the photos download and WhatsApp opens directly in the parent's chat.
-3. **Children**: add each child with the parent's name, WhatsApp number (including country code) and email.
+3. **Children**: add each child with the parent's name, WhatsApp number (including country code), email and any allergies.
+   Allergies show in red on the child's card and above the Daily note form for that child.
    Tap **Edit** on a child to change these details or to add an email to an existing child.
 
 ## Daily note

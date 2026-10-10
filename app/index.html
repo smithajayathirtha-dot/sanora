@@ -63,6 +63,8 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
+  .kid .allergy{display:block;margin-top:4px;color:#a3362f;background:#fbe4e1;border-radius:8px;padding:3px 8px;font-size:.85rem;font-weight:700;overflow-wrap:anywhere}
+  .allergy-banner{margin-top:10px;color:#a3362f;background:#fbe4e1;border:1px solid #f3c3bd;border-radius:12px;padding:10px 12px;font-weight:700;font-size:.92rem}
   .bname{display:flex;flex-direction:column;line-height:1.05}
   .bname small{font-family:"Nunito Sans",sans-serif;font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
   .hdr-actions{display:flex;align-items:center;gap:2px;flex:none}
@@ -220,6 +222,7 @@
     <p class="hint" id="n-date-label"></p>
     <label for="n-child">Child</label>
     <select id="n-child" class="child-select"></select>
+    <div class="allergy-banner" id="n-allergy" hidden></div>
     <div class="card" style="margin-top:14px">
       <div class="q"><span>Lunch</span><div class="seg" data-f="lunch">
         <button type="button" data-v="none">No</button><button type="button" data-v="some">Ate some</button><button type="button" data-v="most">Ate most</button><button type="button" data-v="all">Ate all</button></div></div>
@@ -301,6 +304,8 @@
         <input id="k-phone" type="tel" inputmode="tel" placeholder="+1 408 555 1234" required>
         <label for="k-email">Parent's email (for parent sign-in)</label>
         <input id="k-email" type="email" inputmode="email" autocomplete="off" placeholder="parent@gmail.com" required>
+        <label for="k-allergies">Allergies</label>
+        <textarea id="k-allergies" rows="2" placeholder="e.g. Peanuts (EpiPen in bag), dairy. Leave empty if none."></textarea>
         <button class="btn" type="submit" id="k-submit">Add child</button>
         <button class="btn ghost" type="button" id="k-cancel" hidden>Cancel</button>
       </form>
@@ -500,7 +505,7 @@
   }
   function renderChildren() {
     $("k-list").innerHTML = children.length
-      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
+      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}${c.allergies ? `<span class="allergy">⚠ Allergies: ${esc(c.allergies)}</span>` : `<span class="mail">No known allergies</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
       : `<div class="empty">No children yet. Add the first one below.</div>`;
     document.querySelectorAll(".child-select").forEach((sel) => {
       const keep = sel.value;
@@ -514,7 +519,7 @@
   function setKidForm(c) {
     editingId = c ? c.id : null;
     $("k-name").value = c ? c.name : ""; $("k-parent").value = c ? c.parent_name : "";
-    $("k-phone").value = c ? c.parent_phone : ""; $("k-email").value = c ? (c.parent_email || "") : "";
+    $("k-phone").value = c ? c.parent_phone : ""; $("k-email").value = c ? (c.parent_email || "") : ""; $("k-allergies").value = c ? (c.allergies || "") : "";
     $("k-form-title").textContent = c ? `Edit ${c.name}` : "Add a child";
     $("k-submit").textContent = c ? "Save changes" : "Add child";
     $("k-cancel").hidden = !c;
@@ -532,7 +537,7 @@
     if (digits.length < 8) { say("k-msg", "Enter the full WhatsApp number with country code.", "err"); return; }
     const email = $("k-email").value.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("k-msg", "Enter a valid parent email.", "err"); return; }
-    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email };
+    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email, allergies: $("k-allergies").value.trim() || null };
     const { error } = editingId
       ? await sb.from("children").update(row).eq("id", editingId)
       : await sb.from("children").insert(Object.assign({ center_id: centerId }, row));
@@ -792,6 +797,9 @@
   });
   $("n-child").addEventListener("change", () => { fillNoteForm(); say("n-msg", ""); });
   function fillNoteForm() {
+    const kidA = children.find((c) => c.id === $("n-child").value);
+    $("n-allergy").hidden = !(kidA && kidA.allergies);
+    if (kidA && kidA.allergies) $("n-allergy").textContent = `⚠ ${kidA.name}'s allergies: ${kidA.allergies}`;
     const n = todayNotes.get($("n-child").value) || {};
     noteState = { lunch: n.lunch ?? null, snack: n.snack ?? null, bowel: n.bowel ?? null, nap: n.nap ?? null };
     $("n-times").value = n.bowel_times ?? ""; $("n-slept").value = n.nap_duration || "";

@@ -51,6 +51,7 @@ create table if not exists public.children (
   created_at    timestamptz not null default now()
 );
 alter table public.children add column if not exists parent_email text;
+alter table public.children add column if not exists allergies text;    -- free text; empty = none known
 alter table public.children add column if not exists center_id text references public.centers(id) on delete cascade;
 update public.children set center_id = 'smiles-and-imagination' where center_id is null;
 alter table public.children alter column center_id set default 'smiles-and-imagination';
