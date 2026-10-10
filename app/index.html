@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3f7d4e">
+<title>Sanora · Teacher</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M32 60V34' stroke='%233f7d4e' stroke-width='4' stroke-linecap='round'/><path d='M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z' fill='%2363a86f'/><path d='M32 40c10 0 16-6 17-14-9 0-16 5-17 14z' fill='%2363a86f'/><path d='M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z' fill='%23e9849a'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#fbf8f2;--surface:#fff;--ink:#24302a;--muted:#5d6b62;--leaf:#3f7d4e;--leaf-soft:#e3efe2;--petal:#e9849a;--petal-soft:#fbe6ea;--line:#e8e2d6;--wa:#25d366;--danger:#b4413c}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--bg)}
+  body{color:var(--ink);font-family:"Nunito Sans",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  [hidden]{display:none!important}
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px}
+  header{position:sticky;top:0;z-index:5;background:rgba(251,248,242,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .brand{display:flex;align-items:center;gap:8px;font-family:Fraunces,serif;font-weight:600;font-size:1.25rem;color:var(--leaf);text-decoration:none}
+  .brand svg{width:24px;height:24px}
+  .link{background:none;border:0;color:var(--muted);font:inherit;font-size:.9rem;cursor:pointer;padding:8px}
+  h1{font-family:Fraunces,serif;font-weight:600;font-size:1.6rem;margin:22px 0 4px}
+  .hint{color:var(--muted);font-size:.93rem;margin-bottom:18px}
+  label{display:block;font-weight:700;font-size:.85rem;margin:14px 0 6px}
+  input,select{width:100%;font:inherit;font-size:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--leaf);outline-offset:1px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;font:inherit;font-weight:700;font-size:1rem;padding:14px 18px;border:0;border-radius:14px;background:var(--leaf);color:#fff;cursor:pointer;margin-top:18px}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.ghost{background:var(--leaf-soft);color:var(--leaf)}
+  .btn.google{background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .btn.wa{background:var(--wa);color:#073b1d}
+  .btn svg{width:20px;height:20px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+  .msg{padding:12px 14px;border-radius:12px;font-size:.93rem;margin-top:14px}
+  .msg.ok{background:var(--leaf-soft);color:var(--leaf)}
+  .msg.err{background:#f8e3e1;color:var(--danger)}
+  .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px dashed #cfd9cd;border-radius:16px;padding:26px 16px;text-align:center;color:var(--muted);cursor:pointer;background:var(--surface)}
+  .drop strong{color:var(--leaf)}
+  .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  @media(min-width:560px){.thumbs{grid-template-columns:repeat(4,1fr)}}
+  .thumb{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--leaf-soft);border:0;padding:0;cursor:pointer}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb .tick{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);display:grid;place-items:center;color:#fff;font-weight:700;font-size:.85rem}
+  .thumb.sel{outline:3px solid var(--wa);outline-offset:-3px}
+  .thumb.sel .tick{background:var(--wa);color:#073b1d}
+  .thumb .sent{position:absolute;left:6px;bottom:6px;background:rgba(255,255,255,.92);color:var(--leaf);font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:999px}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;color:var(--muted);font-size:.9rem}
+  .bar .link{color:var(--leaf);font-weight:700}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px}
+  .kid{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .kid:first-child{border-top:0}
+  .kid b{display:block}
+  .kid span{color:var(--muted);font-size:.88rem}
+  .avatar{width:38px;height:38px;border-radius:50%;background:var(--petal-soft);color:#c25570;display:grid;place-items:center;font-weight:700;flex:none}
+  .kid .who{display:flex;gap:12px;align-items:center;min-width:0}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  nav.tabs .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+  nav.tabs button{background:none;border:0;font:inherit;font-size:.78rem;font-weight:700;color:var(--muted);padding:10px 0 12px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+  nav.tabs button svg{width:22px;height:22px}
+  nav.tabs button[aria-current="page"]{color:var(--leaf)}
+  .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
+  .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
+  .center{max-width:400px;margin:0 auto}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+</head>
+<body>
+<header><div class="wrap">
+  <a class="brand" href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 60V34" stroke="#3f7d4e" stroke-width="4" stroke-linecap="round"/><path d="M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z" fill="#63a86f"/><path d="M32 40c10 0 16-6 17-14-9 0-16 5-17 14z" fill="#63a86f"/><path d="M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z" fill="#e9849a"/></svg>Sanora</a>
+  <button class="link" id="signout" hidden>Sign out</button>
+</div></header>
+
+<main class="wrap">
+
+  <!-- Not configured -->
+  <section id="v-setup" hidden class="center">
+    <h1>Almost ready</h1>
+    <p class="hint">The app isn't connected to its database yet. Add the Supabase URL and anon key to <code>app/config.js</code>.</p>
+  </section>
+
+  <!-- Sign in -->
+  <section id="v-login" hidden class="center">
+    <h1>Teacher sign in</h1>
+    <p class="hint">Sign in with the Google account your center has approved.</p>
+    <button class="btn google" id="g-login" type="button">
+      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+    <div id="login-msg"></div>
+  </section>
+
+  <!-- Upload -->
+  <section id="v-upload" hidden>
+    <h1>Upload photos</h1>
+    <p class="hint">Photos are saved under the child and the date.</p>
+    <div class="row">
+      <div><label for="u-child">Child</label><select id="u-child" class="child-select"></select></div>
+      <div><label for="u-date">Date</label><input id="u-date" type="date"></div>
+    </div>
+    <label for="u-files" class="drop" style="margin-top:16px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3f7d4e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg>
+      <strong>Take or choose photos</strong>
+      <span id="u-count">You can pick several at once</span>
+    </label>
+    <input id="u-files" type="file" accept="image/*" multiple hidden>
+    <div class="thumbs" id="u-preview"></div>
+    <button class="btn" id="u-go" disabled>Upload</button>
+    <div class="progress" id="u-prog" hidden><i></i></div>
+    <div id="u-msg"></div>
+  </section>
+
+  <!-- Share -->
+  <section id="v-share" hidden>
+    <h1>Share on WhatsApp</h1>
+    <p class="hint">Pick a child and date, select photos, then share.</p>
+    <div class="row">
+      <div><label for="s-child">Child</label><select id="s-child" class="child-select"></select></div>
+      <div><label for="s-date">Date</label><input id="s-date" type="date"></div>
+    </div>
+    <div class="bar" id="s-bar" hidden><span id="s-count"></span><button class="link" id="s-all">Select all</button></div>
+    <div class="thumbs" id="s-grid"></div>
+    <div class="empty" id="s-empty" hidden>No photos for this child on this date.</div>
+    <button class="btn wa" id="s-go" disabled>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l2 .9c.3.2.5.2.5.4.1.1.1.7-.2 1.3z"/></svg>
+      <span id="s-label">Share on WhatsApp</span>
+    </button>
+    <p class="hint" id="s-tip" style="margin-top:10px" hidden></p>
+    <div id="s-msg"></div>
+  </section>
+
+  <!-- Children -->
+  <section id="v-kids" hidden>
+    <h1>Children</h1>
+    <p class="hint">Add each child with the parent's WhatsApp number.</p>
+    <div class="card" id="k-list"></div>
+    <div class="card">
+      <form id="f-kid">
+        <label for="k-name">Child's name</label>
+        <input id="k-name" required>
+        <label for="k-parent">Parent's name</label>
+        <input id="k-parent" required>
+        <label for="k-phone">Parent's WhatsApp number</label>
+        <input id="k-phone" type="tel" inputmode="tel" placeholder="+1 408 555 1234" required>
+        <button class="btn" type="submit">Add child</button>
+      </form>
+      <div id="k-msg"></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" id="tabs" hidden><div class="wrap">
+  <button data-tab="upload" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Upload</button>
+  <button data-tab="share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button>
+  <button data-tab="kids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg>Children</button>
+</div></nav>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const cfg = window.SANORA_CONFIG || {};
+  const views = ["setup", "login", "upload", "share", "kids"];
+  const show = (v) => views.forEach((x) => ($("v-" + x).hidden = x !== v));
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+  const niceDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  const say = (el, text, kind = "ok") => { $(el).innerHTML = text ? `<div class="msg ${kind}">${esc(text)}</div>` : ""; };
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) { show("setup"); return; }
+  const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+  let children = [];
+  let tab = "upload";
+
+  // ---------- auth ----------
+  function showLogin(msg) {
+    show("login"); $("tabs").hidden = true; $("signout").hidden = true;
+    say("login-msg", msg || "", "err");
+  }
+  async function boot() {
+    const { data } = await sb.auth.getSession();
+    const denied = sessionStorageGet("sanora-denied");
+    if (data.session) return checkAccess(data.session);
+    showLogin(denied ? `${denied} doesn't have access to Sanora. Ask your center to add this Google account.` : "");
+  }
+  function sessionStorageGet(k) { try { const v = sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; } catch { return null; } }
+  function sessionStorageSet(k, v) { try { sessionStorage.setItem(k, v); } catch {} }
+
+  $("g-login").addEventListener("click", async () => {
+    say("login-msg", "");
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: location.origin + "/app/", queryParams: { prompt: "select_account" } }
+    });
+    if (error) say("login-msg", error.message, "err");
+  });
+  $("signout").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
+
+  // Only allowlisted emails get in; everyone else is signed straight back out.
+  let checking = null;
+  function checkAccess(session) { return checking || (checking = doCheck(session)); }
+  async function doCheck(session) {
+    const { data: ok, error } = await sb.rpc("is_staff");
+    if (error || !ok) {
+      sessionStorageSet("sanora-denied", session.user.email || "This account");
+      await sb.auth.signOut();
+      return;
+    }
+    enter();
+  }
+
+  async function enter() {
+    $("tabs").hidden = false; $("signout").hidden = false;
+    $("u-date").value = $("s-date").value = today();
+    await loadChildren();
+    go(children.length ? "upload" : "kids");
+  }
+
+  // ---------- tabs ----------
+  function go(t) {
+    tab = t; show(t);
+    document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-current", b.dataset.tab === t ? "page" : "false"));
+    if (t === "share") loadGallery();
+  }
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => go(b.dataset.tab)));
+
+  // ---------- children ----------
+  async function loadChildren() {
+    const { data, error } = await sb.from("children").select("*").order("name");
+    if (error) { say("k-msg", error.message, "err"); return; }
+    children = data || [];
+    renderChildren();
+  }
+  function renderChildren() {
+    $("k-list").innerHTML = children.length
+      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span></div></div></div>`).join("")
+      : `<div class="empty">No children yet. Add the first one below.</div>`;
+    document.querySelectorAll(".child-select").forEach((sel) => {
+      const keep = sel.value;
+      sel.innerHTML = children.length ? children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("") : `<option value="">Add a child first</option>`;
+      if (children.some((c) => c.id === keep)) sel.value = keep;
+    });
+    updateUploadBtn();
+  }
+  $("f-kid").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const phone = $("k-phone").value.trim();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 8) { say("k-msg", "Enter the full WhatsApp number with country code.", "err"); return; }
+    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits };
+    const { error } = await sb.from("children").insert(row);
+    if (error) { say("k-msg", error.message, "err"); return; }
+    e.target.reset();
+    say("k-msg", `${row.name} added.`);
+    await loadChildren();
+  });
+
+  // ---------- upload ----------
+  let picked = [];
+  $("u-files").addEventListener("change", (e) => {
+    picked = Array.from(e.target.files || []);
+    $("u-preview").innerHTML = picked.map((f) => `<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""></div>`).join("");
+    $("u-count").textContent = picked.length ? `${picked.length} photo${picked.length > 1 ? "s" : ""} ready` : "You can pick several at once";
+    say("u-msg", "");
+    updateUploadBtn();
+  });
+  function updateUploadBtn() {
+    $("u-go").disabled = !picked.length || !$("u-child").value || !$("u-date").value;
+    $("u-go").textContent = picked.length ? `Upload ${picked.length} photo${picked.length > 1 ? "s" : ""}` : "Upload";
+  }
+  ["u-child", "u-date"].forEach((id) => $(id).addEventListener("change", updateUploadBtn));
+
+  // Shrink large camera photos before upload (keeps storage small, shares fast)
+  async function shrink(file, max = 1600) {
+    try {
+      const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
+      return blob || file;
+    } catch { return file; }
+  }
+
+  $("u-go").addEventListener("click", async () => {
+    const childId = $("u-child").value, day = $("u-date").value;
+    const kid = children.find((c) => c.id === childId);
+    $("u-go").disabled = true; $("u-prog").hidden = false;
+    const bar = $("u-prog").firstElementChild; bar.style.width = "0";
+    let done = 0, failed = 0;
+    for (const f of picked) {
+      try {
+        const blob = await shrink(f);
+        const path = `${childId}/${day}/${uuid()}.jpg`;
+        const up = await sb.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
+        if (up.error) throw up.error;
+        const ins = await sb.from("photos").insert({ child_id: childId, taken_on: day, path });
+        if (ins.error) throw ins.error;
+      } catch (err) { console.error(err); failed++; }
+      done++; bar.style.width = (done / picked.length) * 100 + "%";
+    }
+    const ok = picked.length - failed;
+    picked = []; $("u-files").value = ""; $("u-preview").innerHTML = ""; $("u-count").textContent = "You can pick several at once";
+    $("u-prog").hidden = true; updateUploadBtn();
+    if (failed) say("u-msg", `${ok} uploaded, ${failed} failed. Check your connection and try those again.`, "err");
+    else say("u-msg", `${ok} photo${ok > 1 ? "s" : ""} saved for ${kid ? kid.name : "child"} · ${niceDate(day)}.`);
+    $("s-child").value = childId; $("s-date").value = day;
+  });
+
+  // ---------- share ----------
+  let photos = [];             // rows for current child/date
+  const selected = new Set();  // photo ids
+  const files = new Map();     // photo id -> File (prefetched so Share opens instantly)
+  let loadToken = 0;
+
+  ["s-child", "s-date"].forEach((id) => $(id).addEventListener("change", loadGallery));
+
+  async function loadGallery() {
+    const token = ++loadToken;
+    selected.clear(); files.clear();
+    $("s-grid").innerHTML = ""; $("s-empty").hidden = true; $("s-bar").hidden = true; say("s-msg", "");
+    const childId = $("s-child").value, day = $("s-date").value;
+    updateShareBtn();
+    if (!childId || !day) return;
+    const { data, error } = await sb.from("photos").select("*").eq("child_id", childId).eq("taken_on", day).order("created_at");
+    if (token !== loadToken) return;
+    if (error) { say("s-msg", error.message, "err"); return; }
+    photos = data || [];
+    if (!photos.length) { $("s-empty").hidden = false; return; }
+    const { data: signed } = await sb.storage.from("photos").createSignedUrls(photos.map((p) => p.path), 3600);
+    if (token !== loadToken) return;
+    const urlFor = new Map((signed || []).map((s) => [s.path, s.signedUrl]));
+    $("s-grid").innerHTML = photos.map((p) => `<button class="thumb" data-id="${p.id}" aria-pressed="false"><img loading="lazy" src="${esc(urlFor.get(p.path) || "")}" alt="Photo"><span class="tick"></span>${p.shared_at ? '<span class="sent">Sent</span>' : ""}</button>`).join("");
+    $("s-bar").hidden = false;
+    updateShareBtn();
+  }
+
+  async function prefetch(p) {
+    if (files.has(p.id)) return;
+    const { data, error } = await sb.storage.from("photos").download(p.path);
+    if (error || !data) throw error || new Error("download failed");
+    const kid = children.find((c) => c.id === p.child_id);
+    const name = `${(kid ? kid.name : "photo").replace(/\W+/g, "-")}-${p.taken_on}-${photos.indexOf(p) + 1}.jpg`;
+    files.set(p.id, new File([data], name, { type: "image/jpeg" }));
+  }
+
+  function toggle(id, on) {
+    const btn = $("s-grid").querySelector(`[data-id="${id}"]`);
+    if (on) selected.add(id); else selected.delete(id);
+    btn.classList.toggle("sel", on); btn.setAttribute("aria-pressed", on);
+    btn.querySelector(".tick").textContent = on ? "✓" : "";
+    if (on) {
+      const p = photos.find((x) => x.id === id);
+      prefetch(p).then(updateShareBtn).catch(() => { say("s-msg", "Couldn't load a photo. Check your connection.", "err"); });
+    }
+  }
+  $("s-grid").addEventListener("click", (e) => {
+    const b = e.target.closest(".thumb"); if (!b) return;
+    toggle(b.dataset.id, !selected.has(b.dataset.id)); updateShareBtn();
+  });
+  $("s-all").addEventListener("click", () => {
+    const all = selected.size < photos.length;
+    photos.forEach((p) => toggle(p.id, all)); updateShareBtn();
+  });
+
+  function updateShareBtn() {
+    const n = selected.size;
+    const ready = n > 0 && [...selected].every((id) => files.has(id));
+    $("s-count").textContent = n ? `${n} of ${photos.length} selected` : `${photos.length} photo${photos.length === 1 ? "" : "s"}`;
+    $("s-all").textContent = n && n === photos.length ? "Clear" : "Select all";
+    $("s-go").disabled = !ready;
+    $("s-label").textContent = n && !ready ? "Preparing photos…" : n ? `Share ${n} on WhatsApp` : "Share on WhatsApp";
+    const kid = children.find((c) => c.id === $("s-child").value);
+    $("s-tip").hidden = !n || !kid;
+    if (kid) $("s-tip").textContent = `In the share sheet, tap WhatsApp, then choose ${kid.parent_name}'s chat.`;
+  }
+
+  async function markShared(ids) {
+    const now = new Date().toISOString();
+    await sb.from("photos").update({ shared_at: now }).in("id", ids);
+    ids.forEach((id) => {
+      const b = $("s-grid").querySelector(`[data-id="${id}"]`);
+      if (b && !b.querySelector(".sent")) b.insertAdjacentHTML("beforeend", '<span class="sent">Sent</span>');
+    });
+  }
+
+  $("s-go").addEventListener("click", async () => {
+    const ids = [...selected];
+    const list = ids.map((id) => files.get(id));
+    const kid = children.find((c) => c.id === $("s-child").value);
+    const text = kid ? `${kid.name}'s day at Sanora · ${niceDate($("s-date").value)} 🌱` : "";
+    say("s-msg", "");
+    if (navigator.canShare && navigator.canShare({ files: list })) {
+      try {
+        await navigator.share({ files: list, text });
+        await markShared(ids);
+        say("s-msg", "Shared. Thanks!");
+      } catch (err) {
+        if (err && err.name !== "AbortError") say("s-msg", "Sharing didn't work: " + err.message, "err");
+      }
+      return;
+    }
+    // Desktop fallback: save the photos, then open the parent's WhatsApp chat to attach them.
+    list.forEach((f) => { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); });
+    if (kid) window.open(`https://wa.me/${kid.parent_phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`, "_blank");
+    await markShared(ids);
+    say("s-msg", "This browser can't share photos directly, so they were downloaded. Attach them in the WhatsApp chat that just opened.");
+  });
+
+  sb.auth.onAuthStateChange((evt, session) => {
+    if (evt === "SIGNED_OUT") location.reload();
+    else if (evt === "SIGNED_IN" && session) checkAccess(session);
+  });
+  boot();
+})();
+</script>
+</body>
+</html>
