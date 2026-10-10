@@ -63,6 +63,11 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
+  .hdr-actions{display:flex;align-items:center;gap:2px}
+  .admin-link{color:var(--leaf);font-weight:700}
+  .admin-link[aria-current="page"]{text-decoration:underline;text-underline-offset:4px}
+  .badge{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--leaf-soft);color:var(--leaf);margin-left:6px;vertical-align:1px}
+  .badge.admin{background:var(--petal-soft);color:#c25570}
   .sigwrap{position:relative;border:1px solid var(--line);border-radius:12px;background:#fff;height:110px;overflow:hidden}
   .sigwrap canvas{display:block;width:100%;height:100%}
   .sighint{position:absolute;left:14px;bottom:12px;color:#b8c0ba;font-size:.9rem;pointer-events:none}
@@ -131,7 +136,7 @@
 <body>
 <header><div class="wrap">
   <a class="brand" href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 60V34" stroke="#3f7d4e" stroke-width="4" stroke-linecap="round"/><path d="M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z" fill="#63a86f"/><path d="M32 40c10 0 16-6 17-14-9 0-16 5-17 14z" fill="#63a86f"/><path d="M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z" fill="#e9849a"/></svg>Sanora</a>
-  <button class="link" id="signout" hidden>Sign out</button>
+  <div class="hdr-actions"><button class="link admin-link" id="admin-btn" hidden>Staff</button><button class="link" id="signout" hidden>Sign out</button></div>
 </div></header>
 
 <main class="wrap">
@@ -252,6 +257,24 @@
     <div id="pa-msg"></div>
   </section>
 
+  <!-- Staff access (admins only) -->
+  <section id="v-staff" hidden>
+    <h1>Staff access</h1>
+    <p class="hint">People here can sign in to the teacher app with Google. Admins can also manage this list.</p>
+    <div class="card" id="sf-list"></div>
+    <div class="card">
+      <form id="f-staff">
+        <h2 class="ftitle">Add a teacher</h2>
+        <label for="sf-email">Google email</label>
+        <input id="sf-email" type="email" inputmode="email" autocomplete="off" placeholder="teacher@gmail.com" required>
+        <label for="sf-role">Access</label>
+        <select id="sf-role"><option value="teacher">Teacher</option><option value="admin">Admin (super user)</option></select>
+        <button class="btn" type="submit">Give access</button>
+      </form>
+      <div id="sf-msg"></div>
+    </div>
+  </section>
+
   <!-- Children -->
   <section id="v-kids" hidden>
     <h1>Children</h1>
@@ -305,7 +328,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const cfg = window.SANORA_CONFIG || {};
-  const views = ["setup", "login", "photos", "notes", "att", "upload", "kids", "parent"];
+  const views = ["setup", "login", "photos", "notes", "att", "upload", "kids", "parent", "staff"];
   const show = (v) => views.forEach((x) => ($("v-" + x).hidden = x !== v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
@@ -364,11 +387,12 @@
       await sb.auth.signOut();
       return;
     }
-    if (role === "staff") enter(); else enterParent();
+    isAdmin = role === "admin";
+    if (role === "staff" || role === "admin") enter(); else enterParent();
   }
 
   async function enter() {
-    $("tabs").hidden = false; $("signout").hidden = false;
+    $("tabs").hidden = false; $("signout").hidden = false; $("admin-btn").hidden = !isAdmin;
     $("u-date").value = today();
     await loadChildren();
     go(children.length ? "photos" : "kids");
@@ -381,9 +405,40 @@
     if (t === "photos") loadLibrary();
     if (t === "notes") loadNotes();
     if (t === "att") loadTeacherAtt();
+    if (t === "staff") loadStaff();
+    $("admin-btn").setAttribute("aria-current", t === "staff" ? "page" : "false");
     updateBar();
   }
   document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => go(b.dataset.tab)));
+  $("admin-btn").addEventListener("click", () => go("staff"));
+
+  // ---------- staff access (admins) ----------
+  let isAdmin = false;
+  async function loadStaff() {
+    const { data, error } = await sb.from("staff").select("email,role,added_at").order("email");
+    if (error) { $("sf-list").innerHTML = ""; say("sf-msg", error.message, "err"); return; }
+    const mine = (me && me.email || "").toLowerCase();
+    $("sf-list").innerHTML = (data || []).map((r) => `<div class="kid"><div class="who"><div class="avatar">${esc((r.email[0] || "?").toUpperCase())}</div><div><b>${esc(r.email)}${r.role === "admin" ? '<span class="badge admin">Admin</span>' : '<span class="badge">Teacher</span>'}</b><span>${r.email.toLowerCase() === mine ? "You" : "Added " + esc(niceDate(String(r.added_at).slice(0, 10)))}</span></div></div>${r.email.toLowerCase() === mine ? "" : `<button class="link" data-remove="${esc(r.email)}" style="color:var(--danger)">Remove</button>`}</div>`).join("") || `<div class="empty">No staff yet.</div>`;
+  }
+  $("sf-list").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-remove]"); if (!b) return;
+    const email = b.dataset.remove;
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Tap again to remove"; setTimeout(() => { if (b.isConnected) { b.dataset.confirm = ""; b.textContent = "Remove"; } }, 4000); return; }
+    const { error } = await sb.from("staff").delete().eq("email", email);
+    if (error) { say("sf-msg", error.message, "err"); return; }
+    say("sf-msg", `${email} no longer has staff access.`);
+    loadStaff();
+  });
+  $("f-staff").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("sf-email").value.trim().toLowerCase(), role = $("sf-role").value;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("sf-msg", "Enter a valid email.", "err"); return; }
+    const { error } = await sb.from("staff").upsert({ email, role }, { onConflict: "email" });
+    if (error) { say("sf-msg", error.message, "err"); return; }
+    e.target.reset();
+    say("sf-msg", `${email} can now sign in as ${role === "admin" ? "an admin" : "a teacher"}.`);
+    loadStaff();
+  });
 
   // ---------- children ----------
   async function loadChildren() {

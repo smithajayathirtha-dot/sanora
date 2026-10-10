@@ -31,6 +31,13 @@ delete from public.staff where email = 'teacher@gmail.com';      -- remove acces
 select * from public.staff;                                      -- see who has access
 ```
 
+## Admins (super users)
+`smitha.jayathirtha@gmail.com` is an **admin**: everything a teacher can do, plus a **Staff** link (top right of the app)
+to give or remove teacher access and to make other admins. Admins can't remove themselves.
+
+## Center page
+Smiles and Imagination has its own page at `/smiles-and-imagination/`, linked from the Sanora home page under **Our centers**.
+
 ## How the photo flow works
 1. **Upload**: the teacher picks a child and a date, then takes or chooses photos.
    The photos are shrunk to a maximum of 1600 px and saved under `<child>/<date>/` in the private bucket.
@@ -65,4 +72,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables and their access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, the admin role and their access rules.

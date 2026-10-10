@@ -11,9 +11,14 @@ create table if not exists public.staff (
   email      text primary key,
   added_at   timestamptz not null default now()
 );
-insert into public.staff (email) values
-  ('smitha.jayathirtha@gmail.com')
-on conflict (email) do nothing;
+-- role: 'admin' = super user (everything a teacher can do + manage staff access)
+alter table public.staff add column if not exists role text not null default 'teacher';
+alter table public.staff drop constraint if exists staff_role_check;
+alter table public.staff add constraint staff_role_check check (role in ('teacher', 'admin'));
+
+insert into public.staff (email, role) values
+  ('smitha.jayathirtha@gmail.com', 'admin')
+on conflict (email) do update set role = 'admin';
 
 -- True when the signed-in user's verified email is on the allowlist
 create or replace function public.is_staff()
@@ -27,7 +32,24 @@ as $$
 $$;
 grant execute on function public.is_staff() to authenticated;
 
-alter table public.staff enable row level security;   -- no policies: not readable from the app
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.staff
+    where role = 'admin'
+      and lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
+$$;
+grant execute on function public.is_admin() to authenticated;
+
+alter table public.staff enable row level security;
+
+-- Only admins can see and change who has staff access
+drop policy if exists "admin manage staff" on public.staff;
+create policy "admin manage staff" on public.staff
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- Children and their parent's WhatsApp contact
 create table if not exists public.children (
@@ -80,12 +102,13 @@ as $$
 $$;
 grant execute on function public.is_parent_of_path(text) to authenticated;
 
--- 'staff', 'parent', or null (no access)
+-- 'admin', 'staff', 'parent', or null (no access)
 create or replace function public.my_role()
 returns text
 language sql stable security definer set search_path = public
 as $$
   select case
+    when public.is_admin() then 'admin'
     when public.is_staff() then 'staff'
     when exists (
       select 1 from public.children c

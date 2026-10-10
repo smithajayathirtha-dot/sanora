@@ -17,6 +17,17 @@
   body{background:var(--bg);color:var(--ink);font-family:"Nunito Sans",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
   .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
   header{padding:22px 20px;display:flex;align-items:center;justify-content:space-between}
+  .hnav{display:flex;align-items:center;gap:18px}
+  .hlink{color:var(--muted);font-weight:700;font-size:.95rem;text-decoration:none}
+  .hlink:hover{color:var(--ink)}
+  section.centers{padding:0 0 80px}
+  .center-card{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;background:#fff8e8;border:1px solid #f3dfae;border-radius:22px;padding:24px 26px;text-decoration:none;color:inherit;transition:transform .15s,box-shadow .15s}
+  .center-card:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(36,48,42,.08)}
+  .center-card svg{width:64px;height:64px}
+  .center-card h3{font-family:Fraunces,serif;font-weight:600;font-size:1.35rem;margin-bottom:4px}
+  .center-card p{color:var(--muted);font-size:.97rem}
+  .center-card .go{font-weight:700;color:var(--leaf);white-space:nowrap}
+  @media (max-width:640px){.center-card{grid-template-columns:auto 1fr}.center-card .go{grid-column:1/-1}.hlink{display:none}}
   .staff-link{color:var(--leaf);font-weight:700;font-size:.95rem;text-decoration:none;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
   .brand{display:flex;align-items:center;gap:10px;font-family:Fraunces,serif;font-weight:600;font-size:1.5rem;color:var(--leaf);text-decoration:none}
   .brand svg{width:30px;height:30px}
@@ -70,7 +81,7 @@
     <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 60V34" stroke="#3f7d4e" stroke-width="4" stroke-linecap="round"/><path d="M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z" fill="#63a86f"/><path d="M32 40c10 0 16-6 17-14-9 0-16 5-17 14z" fill="#63a86f"/><path d="M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z" fill="#e9849a"/></svg>
     Sanora
   </a>
-  <a class="staff-link" href="/app/">Sign in</a>
+  <nav class="hnav"><a class="hlink" href="#centers">Our centers</a><a class="staff-link" href="/app/">Sign in</a></nav>
 </header>
 
 <main>
@@ -147,6 +158,18 @@
           <p>Every payment comes with a matching receipt, ready whenever a parent needs it.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="centers" id="centers">
+    <div class="wrap">
+      <h2>Our centers</h2>
+      <p class="sub">Childcare centers running their day on Sanora.</p>
+      <a class="center-card" href="/smiles-and-imagination/">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><g stroke="#f6b93b" stroke-width="4" stroke-linecap="round"><path d="M32 4v8M32 52v8M4 32h8M52 32h8M12 12l6 6M46 46l6 6M52 12l-6 6M18 46l-6 6"/></g><circle cx="32" cy="32" r="16" fill="#f6b93b"/><circle cx="26.5" cy="29" r="2" fill="#2b2d42"/><circle cx="37.5" cy="29" r="2" fill="#2b2d42"/><path d="M24 35c3 5 13 5 16 0" stroke="#2b2d42" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+        <div><h3>Smiles and Imagination</h3><p>Daycare &amp; Preschool · Pleasanton, CA · Ages 10 months – 5 years · Head: Ramya Shastry</p></div>
+        <span class="go">Visit page →</span>
+      </a>
     </div>
   </section>
 
