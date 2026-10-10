@@ -34,8 +34,8 @@ select * from public.staff;                                      -- see who has 
 ## How the photo flow works
 1. **Upload**: the teacher picks a child and a date, then takes or chooses photos.
    The photos are shrunk to a maximum of 1600 px and saved under `<child>/<date>/` in the private bucket.
-2. **Share**: the teacher picks a child and a date, selects photos, and taps **Share on WhatsApp**.
-   The phone's share sheet opens, and the teacher taps WhatsApp and then the parent's chat. The photos are marked **Sent**.
+2. **Photos** (the screen teachers see after signing in): every upload is organized by day (newest first), then by child.
+   A filter shows one child's photos. To share, tap photos in one child's group, or tap "Select all", then tap **Share**.
+   Pick WhatsApp in the share sheet, then the parent's chat. The photos are marked **Sent**.
    - On a desktop browser that can't share files, the photos download and WhatsApp opens directly in the parent's chat.
-     The teacher then attaches the photos there.
 3. **Children**: add each child with the parent's name and their WhatsApp number, including the country code.

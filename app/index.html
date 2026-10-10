@@ -63,6 +63,23 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
+  #p-filter{margin-bottom:6px}
+  .day{margin-top:26px}
+  .day>h2{font-family:Fraunces,serif;font-weight:600;font-size:1.15rem;margin-bottom:10px;position:sticky;top:56px;background:var(--bg);padding:6px 0;z-index:2}
+  .group{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+  .group.active{border-color:var(--wa);box-shadow:0 0 0 1px var(--wa)}
+  .ghead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .ghead .who{display:flex;align-items:center;gap:10px;min-width:0}
+  .ghead b{display:block}
+  .ghead span{color:var(--muted);font-size:.85rem}
+  .group .thumbs{margin-top:12px}
+  .sharebar{position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom));z-index:7;padding:0 12px 10px}
+  .sharebar .wrap{background:var(--ink);color:#fff;border-radius:18px;padding:12px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .sharebar .info{flex:1;min-width:0;font-size:.9rem;line-height:1.3}
+  .sharebar .info small{display:block;opacity:.75}
+  .sharebar .btn{width:auto;margin:0;padding:11px 14px;font-size:.92rem;flex:none}
+  .sharebar .x{background:none;border:0;color:#fff;opacity:.7;font-size:1.3rem;cursor:pointer;padding:4px 6px}
+  body.selecting{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
@@ -112,23 +129,14 @@
     <div id="u-msg"></div>
   </section>
 
-  <!-- Share -->
-  <section id="v-share" hidden>
-    <h1>Share on WhatsApp</h1>
-    <p class="hint">Pick a child and date, select photos, then share.</p>
-    <div class="row">
-      <div><label for="s-child">Child</label><select id="s-child" class="child-select"></select></div>
-      <div><label for="s-date">Date</label><input id="s-date" type="date"></div>
-    </div>
-    <div class="bar" id="s-bar" hidden><span id="s-count"></span><button class="link" id="s-all">Select all</button></div>
-    <div class="thumbs" id="s-grid"></div>
-    <div class="empty" id="s-empty" hidden>No photos for this child on this date.</div>
-    <button class="btn wa" id="s-go" disabled>
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l2 .9c.3.2.5.2.5.4.1.1.1.7-.2 1.3z"/></svg>
-      <span id="s-label">Share on WhatsApp</span>
-    </button>
-    <p class="hint" id="s-tip" style="margin-top:10px" hidden></p>
-    <div id="s-msg"></div>
+  <!-- Photos library -->
+  <section id="v-photos" hidden>
+    <h1>Photos</h1>
+    <p class="hint">Every upload, organized by day and child. Tap photos to select, then share with the parent.</p>
+    <select id="p-filter" aria-label="Show photos for"></select>
+    <div id="p-list"></div>
+    <div class="empty" id="p-empty" hidden></div>
+    <div id="p-msg"></div>
   </section>
 
   <!-- Children -->
@@ -152,16 +160,25 @@
 </main>
 
 <nav class="tabs" id="tabs" hidden><div class="wrap">
-  <button data-tab="upload" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Upload</button>
-  <button data-tab="share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button>
+  <button data-tab="photos" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photos</button>
+  <button data-tab="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Upload</button>
   <button data-tab="kids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg>Children</button>
 </div></nav>
+
+<div class="sharebar" id="sharebar" hidden><div class="wrap">
+  <button class="x" id="sb-clear" aria-label="Clear selection">×</button>
+  <div class="info"><span id="sb-count"></span><small id="sb-tip"></small></div>
+  <button class="btn wa" id="sb-go" disabled>
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l2 .9c.3.2.5.2.5.4.1.1.1.7-.2 1.3z"/></svg>
+    <span id="sb-label">Share</span>
+  </button>
+</div></div>
 
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
   const cfg = window.SANORA_CONFIG || {};
-  const views = ["setup", "login", "upload", "share", "kids"];
+  const views = ["setup", "login", "photos", "upload", "kids"];
   const show = (v) => views.forEach((x) => ($("v-" + x).hidden = x !== v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
@@ -214,16 +231,17 @@
 
   async function enter() {
     $("tabs").hidden = false; $("signout").hidden = false;
-    $("u-date").value = $("s-date").value = today();
+    $("u-date").value = today();
     await loadChildren();
-    go(children.length ? "upload" : "kids");
+    go(children.length ? "photos" : "kids");
   }
 
   // ---------- tabs ----------
   function go(t) {
     tab = t; show(t);
     document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-current", b.dataset.tab === t ? "page" : "false"));
-    if (t === "share") loadGallery();
+    if (t === "photos") loadLibrary();
+    updateBar();
   }
   document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => go(b.dataset.tab)));
 
@@ -243,6 +261,7 @@
       sel.innerHTML = children.length ? children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("") : `<option value="">Add a child first</option>`;
       if (children.some((c) => c.id === keep)) sel.value = keep;
     });
+    renderFilter();
     updateUploadBtn();
   }
   $("f-kid").addEventListener("submit", async (e) => {
@@ -307,100 +326,151 @@
     picked = []; $("u-files").value = ""; $("u-preview").innerHTML = ""; $("u-count").textContent = "You can pick several at once";
     $("u-prog").hidden = true; updateUploadBtn();
     if (failed) say("u-msg", `${ok} uploaded, ${failed} failed. Check your connection and try those again.`, "err");
-    else say("u-msg", `${ok} photo${ok > 1 ? "s" : ""} saved for ${kid ? kid.name : "child"} · ${niceDate(day)}.`);
-    $("s-child").value = childId; $("s-date").value = day;
+    else say("u-msg", `${ok} photo${ok > 1 ? "s" : ""} saved for ${kid ? kid.name : "child"} · ${niceDate(day)}. Find them in Photos.`);
   });
 
-  // ---------- share ----------
-  let photos = [];             // rows for current child/date
-  const selected = new Set();  // photo ids
-  const files = new Map();     // photo id -> File (prefetched so Share opens instantly)
+  // ---------- photos library ----------
+  let photos = [];               // all loaded rows, newest day first
+  let urlFor = new Map();        // path -> signed thumbnail URL
+  const selected = new Set();    // photo ids (always within one child + day)
+  const files = new Map();       // photo id -> File, prefetched so Share opens instantly
+  let groupKey = null;           // "<date>|<childId>" of the current selection
   let loadToken = 0;
+  const keyOf = (p) => p.taken_on + "|" + p.child_id;
+  const kidById = (id) => children.find((c) => c.id === id);
+  const dayLabel = (iso) => iso === today() ? "Today" : iso === shiftDay(today(), -1) ? "Yesterday" : niceDate(iso);
+  function shiftDay(iso, n) { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
 
-  ["s-child", "s-date"].forEach((id) => $(id).addEventListener("change", loadGallery));
+  function renderFilter() {
+    const keep = $("p-filter").value;
+    $("p-filter").innerHTML = `<option value="">All children</option>` + children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    if (children.some((c) => c.id === keep)) $("p-filter").value = keep;
+  }
+  $("p-filter").addEventListener("change", () => { clearSelection(); renderLibrary(); });
 
-  async function loadGallery() {
+  async function loadLibrary() {
     const token = ++loadToken;
-    selected.clear(); files.clear();
-    $("s-grid").innerHTML = ""; $("s-empty").hidden = true; $("s-bar").hidden = true; say("s-msg", "");
-    const childId = $("s-child").value, day = $("s-date").value;
-    updateShareBtn();
-    if (!childId || !day) return;
-    const { data, error } = await sb.from("photos").select("*").eq("child_id", childId).eq("taken_on", day).order("created_at");
+    say("p-msg", "");
+    if (!photos.length) $("p-list").innerHTML = `<div class="empty">Loading photos…</div>`;
+    const { data, error } = await sb.from("photos").select("*").order("taken_on", { ascending: false }).order("created_at").limit(1000);
     if (token !== loadToken) return;
-    if (error) { say("s-msg", error.message, "err"); return; }
+    if (error) { $("p-list").innerHTML = ""; say("p-msg", error.message, "err"); return; }
     photos = data || [];
-    if (!photos.length) { $("s-empty").hidden = false; return; }
-    const { data: signed } = await sb.storage.from("photos").createSignedUrls(photos.map((p) => p.path), 3600);
+    const need = photos.map((p) => p.path).filter((path) => !urlFor.has(path));
+    for (let i = 0; i < need.length; i += 100) {
+      const { data: signed } = await sb.storage.from("photos").createSignedUrls(need.slice(i, i + 100), 3600);
+      (signed || []).forEach((x) => x.signedUrl && urlFor.set(x.path, x.signedUrl));
+    }
     if (token !== loadToken) return;
-    const urlFor = new Map((signed || []).map((s) => [s.path, s.signedUrl]));
-    $("s-grid").innerHTML = photos.map((p) => `<button class="thumb" data-id="${p.id}" aria-pressed="false"><img loading="lazy" src="${esc(urlFor.get(p.path) || "")}" alt="Photo"><span class="tick"></span>${p.shared_at ? '<span class="sent">Sent</span>' : ""}</button>`).join("");
-    $("s-bar").hidden = false;
-    updateShareBtn();
+    renderLibrary();
+  }
+
+  function renderLibrary() {
+    const only = $("p-filter").value;
+    const rows = photos.filter((p) => !only || p.child_id === only);
+    $("p-empty").hidden = rows.length > 0;
+    $("p-empty").textContent = only ? "No photos for this child yet." : "No photos yet. Use Upload to add the first ones.";
+    const days = new Map();
+    rows.forEach((p) => {
+      if (!days.has(p.taken_on)) days.set(p.taken_on, new Map());
+      const g = days.get(p.taken_on);
+      if (!g.has(p.child_id)) g.set(p.child_id, []);
+      g.get(p.child_id).push(p);
+    });
+    const dates = [...days.keys()].sort().reverse();
+    $("p-list").innerHTML = dates.map((d) => {
+      const groups = [...days.get(d).entries()].sort((a, b) => (kidById(a[0])?.name || "").localeCompare(kidById(b[0])?.name || ""));
+      return `<div class="day"><h2>${esc(dayLabel(d))}</h2>` + groups.map(([cid, list]) => {
+        const kid = kidById(cid) || { name: "Unknown child" };
+        const sent = list.filter((p) => p.shared_at).length;
+        const key = d + "|" + cid;
+        return `<div class="group" data-key="${key}">
+          <div class="ghead"><div class="who"><div class="avatar">${esc((kid.name[0] || "?").toUpperCase())}</div>
+            <div><b>${esc(kid.name)}</b><span>${list.length} photo${list.length > 1 ? "s" : ""}${sent ? ` · ${sent} sent` : ""}</span></div></div>
+            <button class="link" data-all="${key}">Select all</button></div>
+          <div class="thumbs">${list.map((p) => `<button class="thumb" data-id="${p.id}" aria-pressed="false"><img loading="lazy" src="${esc(urlFor.get(p.path) || "")}" alt="Photo of ${esc(kid.name)}"><span class="tick"></span>${p.shared_at ? '<span class="sent">Sent</span>' : ""}</button>`).join("")}</div>
+        </div>`;
+      }).join("") + `</div>`;
+    }).join("");
+    selected.forEach((id) => paint(id, true));
+    updateBar();
+  }
+
+  function paint(id, on) {
+    const btn = $("p-list").querySelector(`.thumb[data-id="${id}"]`); if (!btn) return;
+    btn.classList.toggle("sel", on); btn.setAttribute("aria-pressed", on);
+    btn.querySelector(".tick").textContent = on ? "✓" : "";
+  }
+  function clearSelection() { selected.forEach((id) => paint(id, false)); selected.clear(); groupKey = null; updateBar(); }
+
+  function toggle(id, on) {
+    const p = photos.find((x) => x.id === id); if (!p) return;
+    if (on && groupKey && groupKey !== keyOf(p)) clearSelection();   // one parent at a time
+    if (on) { selected.add(id); groupKey = keyOf(p); } else selected.delete(id);
+    if (!selected.size) groupKey = null;
+    paint(id, on);
+    if (on) prefetch(p).then(updateBar).catch(() => say("p-msg", "Couldn't load a photo. Check your connection.", "err"));
   }
 
   async function prefetch(p) {
     if (files.has(p.id)) return;
     const { data, error } = await sb.storage.from("photos").download(p.path);
     if (error || !data) throw error || new Error("download failed");
-    const kid = children.find((c) => c.id === p.child_id);
-    const name = `${(kid ? kid.name : "photo").replace(/\W+/g, "-")}-${p.taken_on}-${photos.indexOf(p) + 1}.jpg`;
-    files.set(p.id, new File([data], name, { type: "image/jpeg" }));
+    const kid = kidById(p.child_id);
+    const n = photos.filter((x) => keyOf(x) === keyOf(p)).indexOf(p) + 1;
+    files.set(p.id, new File([data], `${(kid ? kid.name : "photo").replace(/\W+/g, "-")}-${p.taken_on}-${n}.jpg`, { type: "image/jpeg" }));
   }
 
-  function toggle(id, on) {
-    const btn = $("s-grid").querySelector(`[data-id="${id}"]`);
-    if (on) selected.add(id); else selected.delete(id);
-    btn.classList.toggle("sel", on); btn.setAttribute("aria-pressed", on);
-    btn.querySelector(".tick").textContent = on ? "✓" : "";
-    if (on) {
-      const p = photos.find((x) => x.id === id);
-      prefetch(p).then(updateShareBtn).catch(() => { say("s-msg", "Couldn't load a photo. Check your connection.", "err"); });
+  $("p-list").addEventListener("click", (e) => {
+    const all = e.target.closest("[data-all]");
+    if (all) {
+      const ids = photos.filter((p) => keyOf(p) === all.dataset.all).map((p) => p.id);
+      const on = !(groupKey === all.dataset.all && ids.every((id) => selected.has(id)));
+      ids.forEach((id) => toggle(id, on)); updateBar(); return;
     }
-  }
-  $("s-grid").addEventListener("click", (e) => {
     const b = e.target.closest(".thumb"); if (!b) return;
-    toggle(b.dataset.id, !selected.has(b.dataset.id)); updateShareBtn();
+    toggle(b.dataset.id, !selected.has(b.dataset.id)); updateBar();
   });
-  $("s-all").addEventListener("click", () => {
-    const all = selected.size < photos.length;
-    photos.forEach((p) => toggle(p.id, all)); updateShareBtn();
-  });
+  $("sb-clear").addEventListener("click", clearSelection);
 
-  function updateShareBtn() {
+  function updateBar() {
     const n = selected.size;
     const ready = n > 0 && [...selected].every((id) => files.has(id));
-    $("s-count").textContent = n ? `${n} of ${photos.length} selected` : `${photos.length} photo${photos.length === 1 ? "" : "s"}`;
-    $("s-all").textContent = n && n === photos.length ? "Clear" : "Select all";
-    $("s-go").disabled = !ready;
-    $("s-label").textContent = n && !ready ? "Preparing photos…" : n ? `Share ${n} on WhatsApp` : "Share on WhatsApp";
-    const kid = children.find((c) => c.id === $("s-child").value);
-    $("s-tip").hidden = !n || !kid;
-    if (kid) $("s-tip").textContent = `In the share sheet, tap WhatsApp, then choose ${kid.parent_name}'s chat.`;
+    $("sharebar").hidden = !n || tab !== "photos";
+    document.body.classList.toggle("selecting", !$("sharebar").hidden);
+    $("p-list").querySelectorAll(".group").forEach((g) => {
+      g.classList.toggle("active", g.dataset.key === groupKey);
+      const ids = photos.filter((p) => keyOf(p) === g.dataset.key).map((p) => p.id);
+      g.querySelector("[data-all]").textContent = g.dataset.key === groupKey && ids.every((id) => selected.has(id)) ? "Clear" : "Select all";
+    });
+    if (!n) return;
+    const [d, cid] = groupKey.split("|"); const kid = kidById(cid);
+    $("sb-count").textContent = `${n} photo${n > 1 ? "s" : ""} of ${kid ? kid.name : "child"} · ${dayLabel(d)}`;
+    $("sb-tip").textContent = kid ? `Share → WhatsApp → ${kid.parent_name}'s chat` : "";
+    $("sb-go").disabled = !ready;
+    $("sb-label").textContent = ready ? "Share" : "Preparing…";
   }
 
   async function markShared(ids) {
     const now = new Date().toISOString();
     await sb.from("photos").update({ shared_at: now }).in("id", ids);
-    ids.forEach((id) => {
-      const b = $("s-grid").querySelector(`[data-id="${id}"]`);
-      if (b && !b.querySelector(".sent")) b.insertAdjacentHTML("beforeend", '<span class="sent">Sent</span>');
-    });
+    photos.forEach((p) => { if (ids.includes(p.id)) p.shared_at = now; });
+    clearSelection(); renderLibrary();
   }
 
-  $("s-go").addEventListener("click", async () => {
+  $("sb-go").addEventListener("click", async () => {
     const ids = [...selected];
     const list = ids.map((id) => files.get(id));
-    const kid = children.find((c) => c.id === $("s-child").value);
-    const text = kid ? `${kid.name}'s day at Sanora · ${niceDate($("s-date").value)} 🌱` : "";
-    say("s-msg", "");
+    const [d, cid] = groupKey.split("|"); const kid = kidById(cid);
+    const text = kid ? `${kid.name}'s day at Sanora · ${niceDate(d)} 🌱` : "";
+    say("p-msg", "");
     if (navigator.canShare && navigator.canShare({ files: list })) {
       try {
         await navigator.share({ files: list, text });
         await markShared(ids);
-        say("s-msg", "Shared. Thanks!");
+        say("p-msg", `Shared with ${kid ? kid.parent_name : "the parent"}. Thanks!`);
       } catch (err) {
-        if (err && err.name !== "AbortError") say("s-msg", "Sharing didn't work: " + err.message, "err");
+        if (err && err.name !== "AbortError") say("p-msg", "Sharing didn't work: " + err.message, "err");
       }
       return;
     }
@@ -408,7 +478,7 @@
     list.forEach((f) => { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); });
     if (kid) window.open(`https://wa.me/${kid.parent_phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`, "_blank");
     await markShared(ids);
-    say("s-msg", "This browser can't share photos directly, so they were downloaded. Attach them in the WhatsApp chat that just opened.");
+    say("p-msg", "This browser can't share photos directly, so they were downloaded. Attach them in the WhatsApp chat that just opened.");
   });
 
   sb.auth.onAuthStateChange((evt, session) => {
