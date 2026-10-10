@@ -41,6 +41,12 @@ select * from public.staff;                                      -- see who has 
 3. **Children**: add each child with the parent's name, WhatsApp number (including country code) and email.
    Tap **Edit** on a child to change these details or to add an email to an existing child.
 
+## Daily note
+In the **Daily note** tab, the teacher picks a child and fills in today's note: lunch (no / ate some / ate most / ate all),
+snack, bowel movement (and how many times), nap (and how long), notes, and the teacher's sign (pre-filled from their Google name).
+Tap an answer again to clear it. There is one note per child per day; saving again updates it.
+The "Today's notes" list shows which children still need one. Parents see the note at the top of that day, above the photos.
+
 ## Parent sign-in
 Parents open https://sanorakids.vercel.app/app/ (or the **Sign in** button on the home page) and sign in with the email the teacher entered.
 They only see photos of their own children, organized by day. They can tap a photo to view it full size and save it.
@@ -53,4 +59,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column and parent access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes table and their access rules.

@@ -118,6 +118,33 @@ drop policy if exists "parent read own photos" on public.photos;
 create policy "parent read own photos" on public.photos
   for select to authenticated using (public.is_parent_of(child_id));
 
+-- Daily note (one per child per day): lunch, snack, bowel movement, nap, notes
+create table if not exists public.daily_notes (
+  id            uuid primary key default gen_random_uuid(),
+  child_id      uuid not null references public.children(id) on delete cascade,
+  note_date     date not null,
+  lunch         text check (lunch in ('none', 'some', 'most', 'all')),
+  snack         boolean,
+  bowel         boolean,
+  bowel_times   int check (bowel_times between 0 and 20),
+  nap           boolean,
+  nap_duration  text,                   -- e.g. "1h 30m"
+  notes         text,
+  teacher_name  text,                   -- the teacher's sign
+  updated_by    uuid references auth.users(id) default auth.uid(),
+  updated_at    timestamptz not null default now(),
+  unique (child_id, note_date)
+);
+alter table public.daily_notes enable row level security;
+
+drop policy if exists "staff all notes" on public.daily_notes;
+create policy "staff all notes" on public.daily_notes
+  for all to authenticated using (public.is_staff()) with check (public.is_staff());
+
+drop policy if exists "parent read own notes" on public.daily_notes;
+create policy "parent read own notes" on public.daily_notes
+  for select to authenticated using (public.is_parent_of(child_id));
+
 -- Private storage bucket for the photo files
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', false)
