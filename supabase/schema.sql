@@ -12,8 +12,7 @@ create table if not exists public.staff (
   added_at   timestamptz not null default now()
 );
 insert into public.staff (email) values
-  ('smitha.jayathirtha@gmail.com'),
-  ('santosh.kikkeri@gmail.com')
+  ('smitha.jayathirtha@gmail.com')
 on conflict (email) do nothing;
 
 -- True when the signed-in user's verified email is on the allowlist
