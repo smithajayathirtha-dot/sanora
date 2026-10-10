@@ -104,6 +104,21 @@ create table if not exists public.attendance (
   unique (child_id, att_date)
 );
 
+-- Activities: what the class (or some children) did, logged by teachers
+create table if not exists public.activities (
+  id          uuid primary key default gen_random_uuid(),
+  center_id   text not null references public.centers(id) on delete cascade,
+  act_date    date not null,
+  act_time    time,
+  kind        text not null,             -- e.g. 'Circle time', 'Art & craft', 'Outdoor play'
+  title       text,
+  details     text,
+  child_ids   uuid[],                    -- null = the whole class
+  created_by  text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists activities_center_date on public.activities (center_id, act_date);
+
 -- ===============================================================
 -- 2. Who is signed in (all keyed on the verified sign-in email)
 -- ===============================================================
@@ -162,6 +177,16 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- A parent sees an activity for the whole class at their child's center, or one tagged with their child
+create or replace function public.can_parent_see_activity(center text, kids uuid[])
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.children c
+    where c.parent_email is not null and lower(c.parent_email) = public.my_email()
+      and c.center_id = center and (kids is null or c.id = any(kids))
+  );
+$$;
+
 create or replace function public.is_parent_of_path(object_name text)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
@@ -196,7 +221,8 @@ $$;
 grant execute on function
   public.my_email(), public.is_staff(), public.is_admin(), public.my_staff_role(), public.my_center(),
   public.can_staff_center(text), public.can_staff_child(uuid), public.can_staff_path(text),
-  public.is_parent_of(uuid), public.is_parent_of_path(text), public.my_role(), public.my_profile()
+  public.is_parent_of(uuid), public.is_parent_of_path(text), public.my_role(), public.my_profile(),
+  public.can_parent_see_activity(text, uuid[])
 to authenticated;
 
 -- ===============================================================
@@ -277,6 +303,14 @@ create policy "parent insert own attendance" on public.attendance
   for insert to authenticated with check (public.is_parent_of(child_id));
 create policy "parent update own attendance" on public.attendance
   for update to authenticated using (public.is_parent_of(child_id)) with check (public.is_parent_of(child_id));
+
+alter table public.activities enable row level security;
+drop policy if exists "staff all activities" on public.activities;
+create policy "staff all activities" on public.activities
+  for all to authenticated using (public.can_staff_center(center_id)) with check (public.can_staff_center(center_id));
+drop policy if exists "parent read activities" on public.activities;
+create policy "parent read activities" on public.activities
+  for select to authenticated using (public.can_parent_see_activity(center_id, child_ids));
 
 -- Private storage bucket for the photo files
 insert into storage.buckets (id, name, public)

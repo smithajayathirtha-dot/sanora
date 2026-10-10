@@ -37,8 +37,17 @@ from **their center's page** (it opens `/app/?center=<id>`); the Sanora home pag
 | Teacher | smithasantoshks@gmail.com (Smiles and Imagination) | Teacher app for their center; add teachers and children there |
 | Parent | the email on a child's record | Only their own child's day |
 
-Staff manage this from the **Staff** link at the top right of the teacher app. Teachers and heads only ever see
+Staff manage this from **☰ → Staff** at the top right of the teacher app. Teachers and heads only ever see
 the children, photos, notes and check-ins of their own center. The database enforces all of this.
+
+## Teacher app layout
+Bottom tabs, in order: **Check-in · Daily note · Activities · Upload · Photos** (it opens on Check-in).
+**Children** and **Staff** are in the **☰** menu at the top right, along with Sign out.
+
+## Activities
+Teachers log what the children did: pick an activity (circle time, art & craft, music & movement, story time,
+outdoor play, sensory play, learning, other), an optional title, time and details, and whether it was the
+whole class or some children. Parents see each day's activities in their child's day, only the ones their child took part in.
 
 ## How the photo flow works
 1. **Upload**: the teacher picks a child and a date, then takes or chooses photos.
@@ -75,4 +84,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, and their access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, activities, and their access rules.

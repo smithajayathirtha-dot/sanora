@@ -63,6 +63,18 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
+  .kids-pick{margin-top:10px}
+  .acts{display:grid;gap:0}
+  .act{display:grid;grid-template-columns:64px 1fr auto;gap:10px;padding:12px 0;border-top:1px solid var(--line);align-items:start}
+  .act:first-child{border-top:0}
+  .act .tm{font-weight:700;color:var(--muted);font-size:.88rem;padding-top:2px}
+  .act b{display:block}
+  .act .tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#7a5a12;background:#fbf0d6;border-radius:999px;padding:2px 8px;margin-bottom:4px}
+  .act p{color:var(--muted);font-size:.92rem;white-space:pre-wrap}
+  .act .who2{color:var(--muted);font-size:.82rem;margin-top:2px}
+  .pa-acts{background:#fbf0d6;border-radius:14px;padding:10px 12px;margin-top:10px}
+  .pa-acts h3{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:#7a5a12;margin-bottom:4px}
+  .pa-acts .act{grid-template-columns:64px 1fr;border-color:#efdfb7;padding:8px 0}
   .kid .allergy{display:block;margin-top:4px;color:#a3362f;background:#fbe4e1;border-radius:8px;padding:3px 8px;font-size:.85rem;font-weight:700;overflow-wrap:anywhere}
   .allergy-banner{margin-top:10px;color:#a3362f;background:#fbe4e1;border:1px solid #f3c3bd;border-radius:12px;padding:10px 12px;font-weight:700;font-size:.92rem}
   .bname{display:flex;flex-direction:column;line-height:1.05}
@@ -73,8 +85,15 @@
   #hdr-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #login-title{line-height:1.2}
   @media (max-width:420px){#hdr-name{font-size:1.02rem}.hdr-actions .link{padding:8px 6px}}
-  .admin-link{color:var(--leaf);font-weight:700}
-  .admin-link[aria-current="page"]{text-decoration:underline;text-underline-offset:4px}
+  .menu-wrap{position:relative}
+  .menu-btn{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+  .menu-btn svg{width:20px;height:20px}
+  .menu-btn.on{border-color:var(--leaf);color:var(--leaf)}
+  .menu{position:absolute;right:0;top:46px;min-width:190px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.12);padding:6px;z-index:30}
+  .menu button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;font:inherit;font-weight:700;font-size:.95rem;color:var(--ink);padding:11px 12px;border-radius:10px;cursor:pointer;text-align:left}
+  .menu button:hover,.menu button[aria-current="page"]{background:var(--leaf-soft);color:var(--leaf)}
+  .menu button svg{width:18px;height:18px;flex:none}
+  .menu #menu-signout{border-top:1px solid var(--line);border-radius:0 0 10px 10px;margin-top:4px;color:var(--muted)}
   .badge{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--leaf-soft);color:var(--leaf);margin-left:6px;vertical-align:1px}
   .badge.admin{background:var(--petal-soft);color:#c25570}
   .sigwrap{position:relative;border:1px solid var(--line);border-radius:12px;background:#fff;height:110px;overflow:hidden}
@@ -148,7 +167,17 @@
 <body>
 <header><div class="wrap">
   <a class="brand" href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 60V34" stroke="#3f7d4e" stroke-width="4" stroke-linecap="round"/><path d="M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z" fill="#63a86f"/><path d="M32 40c10 0 16-6 17-14-9 0-16 5-17 14z" fill="#63a86f"/><path d="M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z" fill="#e9849a"/></svg><span class="bname"><span id="hdr-name">Sanora</span><small id="hdr-sub" hidden>on Sanora</small></span></a>
-  <div class="hdr-actions"><button class="link admin-link" id="admin-btn" hidden>Staff</button><button class="link" id="signout" hidden>Sign out</button></div>
+  <div class="hdr-actions">
+    <button class="link" id="signout" hidden>Sign out</button>
+    <div class="menu-wrap" id="menu-wrap" hidden>
+      <button class="menu-btn" id="menu-btn" aria-label="Menu" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <div class="menu" id="menu" role="menu" hidden>
+        <button role="menuitem" data-go="kids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg>Children</button>
+        <button role="menuitem" data-go="staff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Staff</button>
+        <button role="menuitem" id="menu-signout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg>Sign out</button>
+      </div>
+    </div>
+  </div>
 </div></header>
 
 <main class="wrap">
@@ -184,6 +213,29 @@
     <input id="ta-date" type="date">
     <p class="hint" id="ta-sum" style="margin:14px 0 10px"></p>
     <div id="ta-list"></div>
+  </section>
+
+  <!-- Activities -->
+  <section id="v-act" hidden>
+    <h1>Activities</h1>
+    <p class="hint">Log what the children did today. Parents see it in their child's day.</p>
+    <div class="card">
+      <div class="q"><span>Activity</span><div class="seg" id="ac-kind">
+        <button type="button" data-v="Circle time">Circle time</button><button type="button" data-v="Art &amp; craft">Art &amp; craft</button><button type="button" data-v="Music &amp; movement">Music &amp; movement</button><button type="button" data-v="Story time">Story time</button><button type="button" data-v="Outdoor play">Outdoor play</button><button type="button" data-v="Sensory play">Sensory play</button><button type="button" data-v="Learning">Learning</button><button type="button" data-v="Other">Other</button></div></div>
+      <label for="ac-title">Title (optional)</label>
+      <input id="ac-title" placeholder="e.g. Leaf painting">
+      <div class="row">
+        <div><label for="ac-date">Date</label><input id="ac-date" type="date"></div>
+        <div><label for="ac-time">Time</label><input id="ac-time" type="time"></div>
+      </div>
+      <label for="ac-details">Details (optional)</label>
+      <textarea id="ac-details" rows="2" placeholder="What they did, what they enjoyed, anything parents should know"></textarea>
+      <div class="q"><span>Who took part</span><div class="seg" id="ac-who"><button type="button" data-v="all" class="on">Whole class</button><button type="button" data-v="some">Some children</button></div>
+        <div class="seg kids-pick" id="ac-kids" hidden></div></div>
+      <button class="btn" id="ac-save" type="button">Save activity</button>
+      <div id="ac-msg"></div>
+    </div>
+    <div class="card"><h2 class="ftitle" id="ac-list-title">Today's activities</h2><div id="ac-list"></div></div>
   </section>
 
   <!-- Upload -->
@@ -315,11 +367,11 @@
 </main>
 
 <nav class="tabs" id="tabs" hidden><div class="wrap">
-  <button data-tab="photos" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photos</button>
+  <button data-tab="att" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Check-in</button>
   <button data-tab="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M8 12h8M8 16h5"/></svg>Daily note</button>
-  <button data-tab="att"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Check-in</button>
+  <button data-tab="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.1" fill="currentColor"/><circle cx="10" cy="7" r="1.1" fill="currentColor"/><circle cx="15" cy="7" r="1.1" fill="currentColor"/></svg>Activities</button>
   <button data-tab="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Upload</button>
-  <button data-tab="kids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg>Children</button>
+  <button data-tab="photos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photos</button>
 </div></nav>
 
 <div class="lightbox" id="lightbox" hidden>
@@ -344,7 +396,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const cfg = window.SANORA_CONFIG || {};
-  const views = ["setup", "login", "photos", "notes", "att", "upload", "kids", "parent", "staff"];
+  const views = ["setup", "login", "photos", "notes", "att", "act", "upload", "kids", "parent", "staff"];
   const show = (v) => views.forEach((x) => ($("v-" + x).hidden = x !== v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
@@ -381,7 +433,7 @@
 
   // ---------- auth ----------
   function showLogin(msg) {
-    show("login"); $("tabs").hidden = true; $("signout").hidden = true; $("admin-btn").hidden = true;
+    show("login"); $("tabs").hidden = true; $("signout").hidden = true; $("menu-wrap").hidden = true;
     say("login-msg", msg || "", "err");
   }
   async function boot() {
@@ -412,7 +464,9 @@
     else say("login-msg", `Check ${email} for a sign-in link. It may take a minute — look in spam too.`);
   });
   let signingOut = false;
-  $("signout").addEventListener("click", async () => { signingOut = true; await sb.auth.signOut(); location.href = centerPage(); });
+  const doSignOut = async () => { signingOut = true; await sb.auth.signOut(); location.href = centerPage(); };
+  $("signout").addEventListener("click", doSignOut);
+  $("menu-signout").addEventListener("click", doSignOut);
 
   // Staff see the teacher app for their center, parents see their children, anyone else is signed straight back out.
   let checking = null;
@@ -438,10 +492,10 @@
   }
 
   async function enter() {
-    $("tabs").hidden = false; $("signout").hidden = false; $("admin-btn").hidden = false;
+    $("tabs").hidden = false; $("signout").hidden = true; $("menu-wrap").hidden = false;
     $("u-date").value = today();
     await loadChildren();
-    go(children.length ? "photos" : "kids");
+    go(children.length ? "att" : "kids");
   }
 
   // ---------- tabs ----------
@@ -452,11 +506,18 @@
     if (t === "notes") loadNotes();
     if (t === "att") loadTeacherAtt();
     if (t === "staff") loadStaff();
-    $("admin-btn").setAttribute("aria-current", t === "staff" ? "page" : "false");
+    if (t === "act") loadActivities();
+    document.querySelectorAll("#menu [data-go]").forEach((b) => b.setAttribute("aria-current", b.dataset.go === t ? "page" : "false"));
+    $("menu-btn").classList.toggle("on", t === "kids" || t === "staff");
+    closeMenu();
     updateBar();
   }
   document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => go(b.dataset.tab)));
-  $("admin-btn").addEventListener("click", () => go("staff"));
+  function closeMenu() { $("menu").hidden = true; $("menu-btn").setAttribute("aria-expanded", "false"); }
+  $("menu-btn").addEventListener("click", (e) => { e.stopPropagation(); const open = $("menu").hidden; $("menu").hidden = !open; $("menu-btn").setAttribute("aria-expanded", String(open)); });
+  document.querySelectorAll("#menu [data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
+  document.addEventListener("click", (e) => { if (!e.target.closest("#menu-wrap")) closeMenu(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
 
   // ---------- staff (everyone on staff can add teachers; heads and the admin can also remove) ----------
   let isAdmin = false;
@@ -977,10 +1038,71 @@
     $("ta-sum").textContent = `Cleared ${b.dataset.name}'s check-in for this day. ` + $("ta-sum").textContent;
   });
 
+  // ---------- activities ----------
+  let acKind = null, acWho = "all";
+  const acPicked = new Set();
+  function paintAc() {
+    $("ac-kind").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === acKind));
+    $("ac-who").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === acWho));
+    $("ac-kids").hidden = acWho !== "some";
+    $("ac-kids").querySelectorAll("button").forEach((b) => b.classList.toggle("on", acPicked.has(b.dataset.v)));
+  }
+  $("ac-kind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; acKind = acKind === b.dataset.v ? null : b.dataset.v; paintAc(); say("ac-msg", ""); });
+  $("ac-who").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; acWho = b.dataset.v; paintAc(); });
+  $("ac-kids").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; acPicked.has(b.dataset.v) ? acPicked.delete(b.dataset.v) : acPicked.add(b.dataset.v); paintAc(); });
+  $("ac-date").addEventListener("change", () => { renderActList(); refreshActs(); });
+  let actRows = [];
+  async function loadActivities() {
+    if (!$("ac-date").value) $("ac-date").value = today();
+    $("ac-time").value = nowTime();
+    $("ac-kids").innerHTML = children.map((c) => `<button type="button" data-v="${c.id}">${esc(c.name)}</button>`).join("");
+    paintAc();
+    await refreshActs();
+  }
+  async function refreshActs() {
+    const d = $("ac-date").value || today();
+    const { data, error } = await sb.from("activities").select("*").eq("center_id", centerId).eq("act_date", d);
+    if (error) { say("ac-msg", error.message, "err"); return; }
+    actRows = (data || []).sort((a, b) => String(a.act_time || "").localeCompare(String(b.act_time || "")));
+    renderActList();
+  }
+  const whoText = (ids) => !ids || !ids.length ? "Whole class" : ids.map((id) => kidById(id)?.name).filter(Boolean).join(", ");
+  function actItem(a, canDelete) {
+    return `<div class="act"><div class="tm">${a.act_time ? fmtTime(a.act_time) : ""}</div><div><span class="tag">${esc(a.kind)}</span><b>${esc(a.title || a.kind)}</b>${a.details ? `<p>${esc(a.details)}</p>` : ""}${canDelete ? `<div class="who2">${esc(whoText(a.child_ids))}</div>` : ""}</div>${canDelete ? `<button class="link" data-del-act="${a.id}" style="color:var(--danger)">Delete</button>` : ""}</div>`;
+  }
+  function renderActList() {
+    const d = $("ac-date").value || today();
+    $("ac-list-title").textContent = d === today() ? "Today's activities" : `Activities · ${niceDate(d)}`;
+    $("ac-list").innerHTML = actRows.length ? `<div class="acts">${actRows.map((a) => actItem(a, true)).join("")}</div>` : `<div class="empty">Nothing logged yet.</div>`;
+  }
+  $("ac-save").addEventListener("click", async () => {
+    if (!acKind) { say("ac-msg", "Pick an activity.", "err"); return; }
+    if (acWho === "some" && !acPicked.size) { say("ac-msg", "Pick the children who took part, or choose Whole class.", "err"); return; }
+    const row = {
+      center_id: centerId, act_date: $("ac-date").value || today(), act_time: $("ac-time").value || null,
+      kind: acKind, title: $("ac-title").value.trim() || null, details: $("ac-details").value.trim() || null,
+      child_ids: acWho === "some" ? [...acPicked] : null, created_by: me ? me.email : null
+    };
+    $("ac-save").disabled = true;
+    const { error } = await sb.from("activities").insert(row);
+    $("ac-save").disabled = false;
+    if (error) { say("ac-msg", error.message, "err"); return; }
+    say("ac-msg", `Saved ${row.title || row.kind} for ${whoText(row.child_ids).toLowerCase() === "whole class" ? "the whole class" : whoText(row.child_ids)}.`);
+    acKind = null; acWho = "all"; acPicked.clear(); $("ac-title").value = ""; $("ac-details").value = ""; $("ac-time").value = nowTime(); paintAc();
+    refreshActs();
+  });
+  $("ac-list").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-del-act]"); if (!b) return;
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Tap again"; setTimeout(() => { if (b.isConnected) { b.dataset.confirm = ""; b.textContent = "Delete"; } }, 4000); return; }
+    const { error } = await sb.from("activities").delete().eq("id", b.dataset.delAct);
+    if (error) { say("ac-msg", error.message, "err"); return; }
+    refreshActs();
+  });
+
   // ---------- parent view ----------
-  let paPhotos = [], paNotes = [], paUrls = new Map(), lbPhoto = null;
+  let paPhotos = [], paNotes = [], paActs = [], paUrls = new Map(), lbPhoto = null;
   async function enterParent() {
-    $("tabs").hidden = true; $("signout").hidden = false;
+    $("tabs").hidden = true; $("signout").hidden = false; $("menu-wrap").hidden = true;
     show("parent");
     $("pa-list").innerHTML = `<div class="empty">Loading…</div>`;
     const { data: kids, error } = await sb.from("children").select("id,name,center_id").order("name");
@@ -991,10 +1113,12 @@
     setupAttendance();
     $("pa-filter").hidden = children.length < 2;
     $("pa-filter").innerHTML = `<option value="">All children</option>` + children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
-    const [res, nres] = await Promise.all([
+    const [res, nres, ares] = await Promise.all([
       sb.from("photos").select("id,child_id,taken_on,path,created_at").order("taken_on", { ascending: false }).order("created_at").limit(1000),
-      sb.from("daily_notes").select("*").order("note_date", { ascending: false }).limit(400)
+      sb.from("daily_notes").select("*").order("note_date", { ascending: false }).limit(400),
+      sb.from("activities").select("id,center_id,act_date,act_time,kind,title,details,child_ids").order("act_date", { ascending: false }).limit(600)
     ]);
+    paActs = (ares && ares.data) || [];
     if (res.error) { $("pa-list").innerHTML = ""; say("pa-msg", res.error.message, "err"); return; }
     paPhotos = res.data || []; paNotes = nres.data || [];
     await loadParentAtt();
@@ -1013,11 +1137,15 @@
     const noteFor = new Map(notes.map((n) => [n.note_date + "|" + n.child_id, n]));
     const atts = attRows.filter((a) => !only || a.child_id === only);
     const attOf = new Map(atts.map((a) => [a.att_date + "|" + a.child_id, a]));
-    const dates = [...new Set([...photos.map((p) => p.taken_on), ...notes.map((n) => n.note_date), ...atts.map((a) => a.att_date)])].sort().reverse();
+    const actsFor = (d, cid) => paActs.filter((a) => a.act_date === d && (!a.child_ids || !a.child_ids.length || a.child_ids.includes(cid)) && kidById(cid) && kidById(cid).center_id === a.center_id)
+      .sort((x, y) => String(x.act_time || "").localeCompare(String(y.act_time || "")));
+    const myKidIds = children.filter((c) => !only || c.id === only).map((c) => c.id);
+    const actDates = paActs.filter((a) => myKidIds.some((cid) => actsFor(a.act_date, cid).length)).map((a) => a.act_date);
+    const dates = [...new Set([...photos.map((p) => p.taken_on), ...notes.map((n) => n.note_date), ...atts.map((a) => a.att_date), ...actDates])].sort().reverse();
     $("pa-empty").hidden = dates.length > 0;
     const many = children.length > 1;
     $("pa-list").innerHTML = dates.map((d) => {
-      const kidIds = [...new Set([...photos.filter((p) => p.taken_on === d).map((p) => p.child_id), ...notes.filter((n) => n.note_date === d).map((n) => n.child_id), ...atts.filter((a) => a.att_date === d).map((a) => a.child_id)])]
+      const kidIds = [...new Set([...photos.filter((p) => p.taken_on === d).map((p) => p.child_id), ...notes.filter((n) => n.note_date === d).map((n) => n.child_id), ...atts.filter((a) => a.att_date === d).map((a) => a.child_id), ...myKidIds.filter((cid) => actsFor(d, cid).length)])]
         .sort((a, b) => (kidById(a)?.name || "").localeCompare(kidById(b)?.name || ""));
       return `<div class="day"><h2>${esc(dayLabel(d))}</h2>` + kidIds.map((cid) => {
         const ps = photos.filter((p) => p.taken_on === d && p.child_id === cid);
@@ -1027,7 +1155,9 @@
         const thumbs = ps.length ? `<div class="thumbs" style="${note ? "" : "margin-top:0"}">${ps.map((p) => `<button class="thumb" data-pid="${p.id}"><img loading="lazy" src="${esc(paUrls.get(p.path) || "")}" alt="Photo"></button>`).join("")}</div>` : "";
         const a = attOf.get(d + "|" + cid);
         const attline = a ? `<div class="attline"><div><span>In</span> <b>${a.check_in ? fmtTime(a.check_in) : "—"}</b></div><div><span>Out</span> <b>${a.check_out ? fmtTime(a.check_out) : "—"}</b></div></div>` : "";
-        return `<div class="group">${head}${attline}${note ? noteHtml(note) : ""}${thumbs}</div>`;
+        const acts = actsFor(d, cid);
+        const actsHtml = acts.length ? `<div class="pa-acts"><h3>Activities</h3>${acts.map((a) => actItem(a, false)).join("")}</div>` : "";
+        return `<div class="group">${head}${attline}${note ? noteHtml(note) : ""}${actsHtml}${thumbs}</div>`;
       }).join("") + `</div>`;
     }).join("");
   }
