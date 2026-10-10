@@ -7,7 +7,7 @@
 <title>Sanora · Teacher</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M32 60V34' stroke='%233f7d4e' stroke-width='4' stroke-linecap='round'/><path d='M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z' fill='%2363a86f'/><path d='M32 40c10 0 16-6 17-14-9 0-16 5-17 14z' fill='%2363a86f'/><path d='M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z' fill='%23e9849a'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Fraunces:opsz,wght@9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#fbf8f2;--surface:#fff;--ink:#24302a;--muted:#5d6b62;--leaf:#3f7d4e;--leaf-soft:#e3efe2;--petal:#e9849a;--petal-soft:#fbe6ea;--line:#e8e2d6;--wa:#25d366;--danger:#b4413c}
   *{box-sizing:border-box;margin:0}
@@ -63,10 +63,9 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
-  .sigwrap{position:relative;border:1px solid var(--line);border-radius:12px;background:#fff;height:150px;overflow:hidden}
-  .sigwrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+  .sigwrap{position:relative;border:1px solid var(--line);border-radius:12px;background:#fff;height:110px;overflow:hidden}
+  .sigwrap canvas{display:block;width:100%;height:100%}
   .sighint{position:absolute;left:14px;bottom:12px;color:#b8c0ba;font-size:.9rem;pointer-events:none}
-  .sigclear{position:absolute;top:4px;right:4px;font-size:.85rem}
   .sigwrap::after{content:"";position:absolute;left:14px;right:14px;bottom:34px;border-bottom:1px dashed #d8ddd9;pointer-events:none}
   .att{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:4px 12px;padding:8px 0;border-top:1px solid var(--line)}
   .att:first-of-type{border-top:0}
@@ -243,7 +242,7 @@
       <label for="att-name">Your name</label>
       <input id="att-name" autocomplete="name">
       <label>Signature</label>
-      <div class="sigwrap"><canvas id="att-sig" aria-label="Sign here"></canvas><span class="sighint" id="att-sighint">Sign here with your finger</span><button class="link sigclear" id="att-clear" type="button">Clear</button></div>
+      <div class="sigwrap"><canvas id="att-sig" role="img" aria-label="Signature"></canvas><span class="sighint" id="att-sighint">Your signature appears here from your name</span></div>
       <button class="btn" id="att-save" type="button">Check in</button>
       <div id="att-msg"></div>
     </div>
@@ -724,30 +723,32 @@
   const fmtTime = (t) => { if (!t) return ""; const [h, m] = hm(t).split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
   let attRows = [], attKind = "in";
 
-  // Signature pad
-  const sig = { canvas: $("att-sig"), ctx: null, dirty: false, drawing: false, last: null };
-  function sizeSig() {
+  // Signature: generated from the typed name in a handwriting font
+  const sig = { canvas: $("att-sig"), ctx: null, dirty: false };
+  const SIG_FONT = '"Dancing Script", "Brush Script MT", cursive';
+  async function sizeSig() {
     const c = sig.canvas, r = c.getBoundingClientRect(); if (!r.width) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
-    sig.ctx = c.getContext("2d"); sig.ctx.scale(dpr, dpr);
-    sig.ctx.lineWidth = 2.4; sig.ctx.lineCap = "round"; sig.ctx.lineJoin = "round"; sig.ctx.strokeStyle = "#1d2b4f";
-    sig.dirty = false; $("att-sighint").hidden = false;
+    sig.ctx = c.getContext("2d"); sig.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    try { await document.fonts.load(`600 40px ${SIG_FONT}`); } catch {}
+    drawSig();
   }
-  const pt = (e) => { const r = sig.canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-  sig.canvas.addEventListener("pointerdown", (e) => {
-    if (!sig.ctx) sizeSig();
-    sig.drawing = true; sig.last = pt(e); sig.canvas.setPointerCapture(e.pointerId);
-    sig.ctx.beginPath(); sig.ctx.arc(sig.last.x, sig.last.y, 1.1, 0, Math.PI * 2); sig.ctx.fillStyle = "#1d2b4f"; sig.ctx.fill();
-    sig.dirty = true; $("att-sighint").hidden = true; say("att-msg", ""); e.preventDefault();
-  });
-  sig.canvas.addEventListener("pointermove", (e) => {
-    if (!sig.drawing) return;
-    const p = pt(e); sig.ctx.beginPath(); sig.ctx.moveTo(sig.last.x, sig.last.y); sig.ctx.lineTo(p.x, p.y); sig.ctx.stroke(); sig.last = p; e.preventDefault();
-  });
-  ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => sig.canvas.addEventListener(ev, () => { sig.drawing = false; }));
-  $("att-clear").addEventListener("click", sizeSig);
-  window.addEventListener("resize", () => { if (!$("v-parent").hidden && !sig.dirty) sizeSig(); });
+  function drawSig() {
+    if (!sig.ctx) return;
+    const c = sig.canvas, w = c.getBoundingClientRect().width, h = c.getBoundingClientRect().height, ctx = sig.ctx;
+    ctx.clearRect(0, 0, w, h);
+    const name = $("att-name").value.trim();
+    sig.dirty = !!name; $("att-sighint").hidden = !!name;
+    if (!name) return;
+    let size = 44;
+    ctx.font = `600 ${size}px ${SIG_FONT}`;
+    while (ctx.measureText(name).width > w - 36 && size > 18) { size -= 2; ctx.font = `600 ${size}px ${SIG_FONT}`; }
+    ctx.fillStyle = "#1d2b4f"; ctx.textBaseline = "alphabetic";
+    ctx.fillText(name, 18, h - 34);
+  }
+  $("att-name").addEventListener("input", () => { drawSig(); say("att-msg", ""); });
+  window.addEventListener("resize", () => { if (!$("v-parent").hidden) sizeSig(); });
   function sigData() {
     // Crop to a white-background PNG at most 600px wide to keep rows small
     const c = sig.canvas, k = Math.min(1, 600 / c.width);
@@ -790,7 +791,7 @@
     if (!cid || !d || !t) { say("att-msg", "Choose the date and time.", "err"); return; }
     if (d > today()) { say("att-msg", "The date can't be in the future.", "err"); return; }
     if (!name) { say("att-msg", "Enter your name.", "err"); return; }
-    if (!sig.dirty) { say("att-msg", "Please sign in the box.", "err"); return; }
+    drawSig();
     const r = attFor(cid, d);
     if (attKind === "out" && r && r.check_in && t < hm(r.check_in)) { say("att-msg", `Check-out can't be before check-in (${fmtTime(r.check_in)}).`, "err"); return; }
     if (attKind === "in" && r && r.check_out && t > hm(r.check_out)) { say("att-msg", `Check-in can't be after check-out (${fmtTime(r.check_out)}).`, "err"); return; }

@@ -49,7 +49,7 @@ The "Today's notes" list shows which children still need one. Parents see the no
 
 ## Check-in / check-out
 Parents check their child in at drop-off and out at pick-up from the top of their screen.
-The date defaults to today and the time to now, and both can be changed. The parent types their name and signs with a finger.
+The date defaults to today and the time to now, and both can be changed. The parent types their name, and a signature in handwriting style is generated from it.
 The button switches to **Check out** once the child is checked in, and a check-out time earlier than the check-in time is rejected.
 Teachers see every child's entries for any date in the **Check-in** tab: times, the parent's name and signature, and how many children are here now.
 
