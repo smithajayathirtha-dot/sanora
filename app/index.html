@@ -134,6 +134,9 @@
   .sharebar .info{flex:1;min-width:0;font-size:.9rem;line-height:1.3}
   .sharebar .info small{display:block;opacity:.75}
   .sharebar .btn{width:auto;margin:0;padding:11px 14px;font-size:.92rem;flex:none}
+  .sharebar .btn.del{background:transparent;color:#ffb4ae;border:1px solid rgba(255,180,174,.5);padding:11px 12px}
+  .sharebar .btn.del.confirm{background:var(--danger);color:#fff;border-color:var(--danger)}
+  @media (max-width:420px){.sharebar .btn.del #sb-del-label{display:none}.sharebar .btn.del.confirm #sb-del-label{display:inline}}
   .sharebar .x{background:none;border:0;color:#fff;opacity:.7;font-size:1.3rem;cursor:pointer;padding:4px 6px}
   body.selecting{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
 </style>
@@ -204,7 +207,7 @@
   <!-- Photos library -->
   <section id="v-photos" hidden>
     <h1>Photos</h1>
-    <p class="hint">Every upload, organized by day and child. Tap photos to select, then share with the parent.</p>
+    <p class="hint">Every upload, organized by day and child. Tap photos to select, then share them with the parent or delete them.</p>
     <select id="p-filter" aria-label="Show photos for"></select>
     <div id="p-list"></div>
     <div class="empty" id="p-empty" hidden></div>
@@ -325,6 +328,7 @@
 <div class="sharebar" id="sharebar" hidden><div class="wrap">
   <button class="x" id="sb-clear" aria-label="Clear selection">×</button>
   <div class="info"><span id="sb-count"></span><small id="sb-tip"></small></div>
+  <button class="btn del" id="sb-del" type="button" aria-label="Delete selected photos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span id="sb-del-label">Delete</span></button>
   <button class="btn wa" id="sb-go" disabled>
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l2 .9c.3.2.5.2.5.4.1.1.1.7-.2 1.3z"/></svg>
     <span id="sb-label">Share</span>
@@ -662,7 +666,7 @@
     btn.classList.toggle("sel", on); btn.setAttribute("aria-pressed", on);
     btn.querySelector(".tick").textContent = on ? "✓" : "";
   }
-  function clearSelection() { selected.forEach((id) => paint(id, false)); selected.clear(); groupKey = null; updateBar(); }
+  function clearSelection() { selected.forEach((id) => paint(id, false)); selected.clear(); groupKey = null; if (typeof disarmDelete === "function") disarmDelete(); updateBar(); }
 
   function toggle(id, on) {
     const p = photos.find((x) => x.id === id); if (!p) return;
@@ -693,6 +697,28 @@
     toggle(b.dataset.id, !selected.has(b.dataset.id)); updateBar();
   });
   $("sb-clear").addEventListener("click", clearSelection);
+
+  // Delete selected photos: tap once to arm, again to confirm. Removes the files and their records.
+  let delTimer = null;
+  function disarmDelete() { clearTimeout(delTimer); $("sb-del").classList.remove("confirm"); $("sb-del-label").textContent = "Delete"; }
+  $("sb-del").addEventListener("click", async () => {
+    const ids = [...selected]; if (!ids.length) return;
+    if (!$("sb-del").classList.contains("confirm")) {
+      $("sb-del").classList.add("confirm"); $("sb-del-label").textContent = `Delete ${ids.length}?`;
+      delTimer = setTimeout(disarmDelete, 4000); return;
+    }
+    disarmDelete();
+    const rows = photos.filter((p) => ids.includes(p.id));
+    $("sb-del").disabled = true;
+    const st = await sb.storage.from("photos").remove(rows.map((p) => p.path));
+    const db = st.error ? st : await sb.from("photos").delete().in("id", ids);
+    $("sb-del").disabled = false;
+    if (db.error) { say("p-msg", "Couldn't delete: " + db.error.message, "err"); return; }
+    photos = photos.filter((p) => !ids.includes(p.id));
+    rows.forEach((p) => { files.delete(p.id); urlFor.delete(p.path); });
+    clearSelection(); renderLibrary();
+    say("p-msg", `Deleted ${ids.length} photo${ids.length > 1 ? "s" : ""}.`);
+  });
 
   function updateBar() {
     const n = selected.size;
@@ -928,11 +954,20 @@
       : `<div class="k">${label}</div><div class="t none">Not yet</div><span></span>`;
     $("ta-list").innerHTML = children.map((c) => {
       const r = by.get(c.id);
-      return `<div class="card"><div class="ghead" style="margin-bottom:6px"><div class="who"><div class="avatar">${esc((c.name[0] || "?").toUpperCase())}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)}</span></div></div></div>
+      return `<div class="card"><div class="ghead" style="margin-bottom:6px"><div class="who"><div class="avatar">${esc((c.name[0] || "?").toUpperCase())}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)}</span></div></div>${r ? `<button class="link" data-clear="${r.id}" data-name="${esc(c.name)}" style="color:var(--danger)">Clear</button>` : ""}</div>
         <div class="att">${cell(r, "check_in", "In")}</div><div class="att">${cell(r, "check_out", "Out")}</div></div>`;
     }).join("");
   }
   $("ta-date").addEventListener("change", loadTeacherAtt);
+  // Clear a child's check-in/out for the day (tap twice): for test or mistaken entries
+  $("ta-list").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-clear]"); if (!b) return;
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Tap again to clear"; setTimeout(() => { if (b.isConnected) { b.dataset.confirm = ""; b.textContent = "Clear"; } }, 4000); return; }
+    const { error } = await sb.from("attendance").delete().eq("id", b.dataset.clear);
+    if (error) { $("ta-sum").textContent = "Couldn't clear: " + error.message; return; }
+    await loadTeacherAtt();
+    $("ta-sum").textContent = `Cleared ${b.dataset.name}'s check-in for this day. ` + $("ta-sum").textContent;
+  });
 
   // ---------- parent view ----------
   let paPhotos = [], paNotes = [], paUrls = new Map(), lbPhoto = null;
