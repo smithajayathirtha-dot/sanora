@@ -24,19 +24,21 @@ It is plain HTML with no build step, and Vercel serves it as is.
 Anyone can press "Sign in with Google", but only emails in the `staff` table get past the sign-in screen.
 The database itself also refuses all reads and writes from anyone else.
 
-Run these in the SQL Editor to manage access:
-```sql
-insert into public.staff (email) values ('teacher@gmail.com');   -- give access
-delete from public.staff where email = 'teacher@gmail.com';      -- remove access
-select * from public.staff;                                      -- see who has access
-```
+Staff access is managed in the app (Staff link). From the SQL Editor you can also run `select * from public.staff;` to see everyone.
 
-## Admins (super users)
-`smitha.jayathirtha@gmail.com` is an **admin**: everything a teacher can do, plus a **Staff** link (top right of the app)
-to give or remove teacher access and to make other admins. Admins can't remove themselves.
+## Centers, roles and sign-in
+Each center has its own page (Smiles and Imagination: `/smiles-and-imagination/`). Teachers and parents sign in
+from **their center's page** (it opens `/app/?center=<id>`); the Sanora home page only lists the centers.
 
-## Center page
-Smiles and Imagination has its own page at `/smiles-and-imagination/`, linked from the Sanora home page under **Our centers**.
+| Role | Who | Can do |
+| --- | --- | --- |
+| Admin | smitha.jayathirtha@gmail.com | Everything, in every center; add heads, teachers and admins |
+| Head | pleasanton.sai@gmail.com (Smiles and Imagination) | Teacher app for their center; add **and remove** teachers and heads there |
+| Teacher | smithasantoshks@gmail.com (Smiles and Imagination) | Teacher app for their center; add teachers and children there |
+| Parent | the email on a child's record | Only their own child's day |
+
+Staff manage this from the **Staff** link at the top right of the teacher app. Teachers and heads only ever see
+the children, photos, notes and check-ins of their own center. The database enforces all of this.
 
 ## How the photo flow works
 1. **Upload**: the teacher picks a child and a date, then takes or chooses photos.
@@ -61,7 +63,7 @@ The button switches to **Check out** once the child is checked in, and a check-o
 Teachers see every child's entries for any date in the **Check-in** tab: times, the parent's name and signature, and how many children are here now.
 
 ## Parent sign-in
-Parents open https://sanorakids.vercel.app/app/ (or the **Sign in** button on the home page) and sign in with the email the teacher entered.
+Parents tap **Sign in** on their center's page and sign in with the email the teacher entered.
 They only see photos of their own children, organized by day. They can tap a photo to view it full size and save it.
 The database enforces this: a parent's account can't read any other child's rows or files.
 
@@ -72,4 +74,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, the admin role and their access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, and their access rules.

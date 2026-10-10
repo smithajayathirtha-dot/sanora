@@ -63,7 +63,14 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
-  .hdr-actions{display:flex;align-items:center;gap:2px}
+  .bname{display:flex;flex-direction:column;line-height:1.05}
+  .bname small{font-family:"Nunito Sans",sans-serif;font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
+  .hdr-actions{display:flex;align-items:center;gap:2px;flex:none}
+  .hdr-actions .link{white-space:nowrap}
+  .brand{min-width:0}
+  #hdr-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #login-title{line-height:1.2}
+  @media (max-width:420px){#hdr-name{font-size:1.02rem}.hdr-actions .link{padding:8px 6px}}
   .admin-link{color:var(--leaf);font-weight:700}
   .admin-link[aria-current="page"]{text-decoration:underline;text-underline-offset:4px}
   .badge{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--leaf-soft);color:var(--leaf);margin-left:6px;vertical-align:1px}
@@ -135,7 +142,7 @@
 </head>
 <body>
 <header><div class="wrap">
-  <a class="brand" href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 60V34" stroke="#3f7d4e" stroke-width="4" stroke-linecap="round"/><path d="M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z" fill="#63a86f"/><path d="M32 40c10 0 16-6 17-14-9 0-16 5-17 14z" fill="#63a86f"/><path d="M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z" fill="#e9849a"/></svg>Sanora</a>
+  <a class="brand" href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 60V34" stroke="#3f7d4e" stroke-width="4" stroke-linecap="round"/><path d="M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z" fill="#63a86f"/><path d="M32 40c10 0 16-6 17-14-9 0-16 5-17 14z" fill="#63a86f"/><path d="M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z" fill="#e9849a"/></svg><span class="bname"><span id="hdr-name">Sanora</span><small id="hdr-sub" hidden>on Sanora</small></span></a>
   <div class="hdr-actions"><button class="link admin-link" id="admin-btn" hidden>Staff</button><button class="link" id="signout" hidden>Sign out</button></div>
 </div></header>
 
@@ -149,8 +156,8 @@
 
   <!-- Sign in -->
   <section id="v-login" hidden class="center">
-    <h1>Sign in</h1>
-    <p class="hint">For teachers and parents. Parents: use the email you gave your child's teacher.</p>
+    <h1 id="login-title">Sign in</h1>
+    <p class="hint" id="login-hint">For teachers and parents. Parents: use the email you gave your child's teacher.</p>
     <button class="btn google" id="g-login" type="button">
       <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
       Sign in with Google
@@ -259,16 +266,16 @@
 
   <!-- Staff access (admins only) -->
   <section id="v-staff" hidden>
-    <h1>Staff access</h1>
-    <p class="hint">People here can sign in to the teacher app with Google. Admins can also manage this list.</p>
+    <h1>Staff</h1>
+    <p class="hint" id="sf-hint">People here sign in with Google from the center page and use the teacher app.</p>
     <div class="card" id="sf-list"></div>
     <div class="card">
       <form id="f-staff">
-        <h2 class="ftitle">Add a teacher</h2>
+        <h2 class="ftitle" id="sf-title">Add a teacher</h2>
         <label for="sf-email">Google email</label>
         <input id="sf-email" type="email" inputmode="email" autocomplete="off" placeholder="teacher@gmail.com" required>
-        <label for="sf-role">Access</label>
-        <select id="sf-role"><option value="teacher">Teacher</option><option value="admin">Admin (super user)</option></select>
+        <div id="sf-role-wrap"><label for="sf-role">Role</label>
+        <select id="sf-role"></select></div>
         <button class="btn" type="submit">Give access</button>
       </form>
       <div id="sf-msg"></div>
@@ -342,16 +349,38 @@
   let children = [];
   let tab = "upload";
 
+  // ---------- center context ----------
+  // A center page links here as /app/?center=<id>; remember it across the Google round trip.
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  const fromUrl = new URLSearchParams(location.search).get("center");
+  if (fromUrl && /^[a-z0-9-]{1,60}$/.test(fromUrl)) { store.set("sanora-center", fromUrl); history.replaceState(null, "", location.pathname); }
+  let centerId = store.get("sanora-center");   // the center whose page sent us here (or the staff member's own)
+  let centerName = "";
+  function brand(name) {
+    centerName = name || "";
+    $("hdr-name").textContent = centerName || "Sanora";
+    $("hdr-sub").hidden = !centerName;
+    document.title = centerName ? `${centerName} · Sanora` : "Sanora";
+    $("login-title").textContent = centerName ? `Sign in to ${centerName}` : "Sign in";
+  }
+  async function loadCenterName(id) {
+    if (!id) return brand("");
+    const { data } = await sb.from("centers").select("name").eq("id", id);
+    brand(data && data[0] ? data[0].name : "");
+  }
+  const centerPage = () => (centerId ? `/${centerId}/` : "/");
+
   // ---------- auth ----------
   function showLogin(msg) {
-    show("login"); $("tabs").hidden = true; $("signout").hidden = true;
+    show("login"); $("tabs").hidden = true; $("signout").hidden = true; $("admin-btn").hidden = true;
     say("login-msg", msg || "", "err");
   }
   async function boot() {
+    await loadCenterName(centerId);
     const { data } = await sb.auth.getSession();
     const denied = sessionStorageGet("sanora-denied");
     if (data.session) return checkAccess(data.session);
-    showLogin(denied ? `${denied} isn't linked to Sanora yet. Parents: ask your child's teacher to add this email. Teachers: ask your center to give you access.` : "");
+    showLogin(denied ? `${denied} isn't linked to ${centerName || "Sanora"} yet. Parents: ask your child's teacher to add this email. Teachers: ask the head of your center to add you.` : "");
   }
   function sessionStorageGet(k) { try { const v = sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; } catch { return null; } }
   function sessionStorageSet(k, v) { try { sessionStorage.setItem(k, v); } catch {} }
@@ -373,26 +402,34 @@
     if (error) say("login-msg", error.message, "err");
     else say("login-msg", `Check ${email} for a sign-in link. It may take a minute — look in spam too.`);
   });
-  $("signout").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
+  let signingOut = false;
+  $("signout").addEventListener("click", async () => { signingOut = true; await sb.auth.signOut(); location.href = centerPage(); });
 
-  // Staff see the teacher app, parents see their children's photos, anyone else is signed straight back out.
+  // Staff see the teacher app for their center, parents see their children, anyone else is signed straight back out.
   let checking = null;
   function checkAccess(session) { return checking || (checking = doCheck(session)); }
-  let me = null;
+  let me = null, myRole = null;
   async function doCheck(session) {
     me = session.user;
-    const { data: role, error } = await sb.rpc("my_role");
+    const { data: prof, error } = await sb.rpc("my_profile");
+    const role = prof && prof.role;
     if (error || !role) {
       sessionStorageSet("sanora-denied", session.user.email || "This account");
       await sb.auth.signOut();
       return;
     }
-    isAdmin = role === "admin";
-    if (role === "staff" || role === "admin") enter(); else enterParent();
+    myRole = role; isAdmin = role === "admin";
+    if (role === "parent") return enterParent();
+    // Staff work in their own center; the admin works in the center whose page they came from
+    if (!isAdmin) centerId = prof.center_id;
+    else if (!centerId) { const { data } = await sb.from("centers").select("id").order("created_at").limit(1); centerId = data && data[0] ? data[0].id : null; }
+    if (centerId) store.set("sanora-center", centerId);
+    if (!isAdmin) brand(prof.center_name); else await loadCenterName(centerId);
+    enter();
   }
 
   async function enter() {
-    $("tabs").hidden = false; $("signout").hidden = false; $("admin-btn").hidden = !isAdmin;
+    $("tabs").hidden = false; $("signout").hidden = false; $("admin-btn").hidden = false;
     $("u-date").value = today();
     await loadChildren();
     go(children.length ? "photos" : "kids");
@@ -412,13 +449,22 @@
   document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => go(b.dataset.tab)));
   $("admin-btn").addEventListener("click", () => go("staff"));
 
-  // ---------- staff access (admins) ----------
+  // ---------- staff (everyone on staff can add teachers; heads and the admin can also remove) ----------
   let isAdmin = false;
+  const ROLE_LABEL = { admin: "Admin", head: "Head", teacher: "Teacher" };
+  const canRemove = (r, mine) => r.email.toLowerCase() !== mine && (isAdmin || (myRole === "head" && r.role !== "admin"));
   async function loadStaff() {
-    const { data, error } = await sb.from("staff").select("email,role,added_at").order("email");
+    const opts = isAdmin ? ["teacher", "head", "admin"] : myRole === "head" ? ["teacher", "head"] : ["teacher"];
+    $("sf-role").innerHTML = opts.map((o) => `<option value="${o}">${o === "admin" ? "Admin (all centers)" : ROLE_LABEL[o]}</option>`).join("");
+    $("sf-role-wrap").hidden = opts.length < 2;
+    $("sf-title").textContent = opts.length < 2 ? "Add a teacher" : "Add staff";
+    $("sf-hint").textContent = `People here sign in with Google from the ${centerName || "center"} page and use the teacher app.` + (myRole === "teacher" ? " You can add teachers; the head can remove them." : "");
+    const { data, error } = await sb.from("staff").select("email,role,center_id,added_at").order("email");
     if (error) { $("sf-list").innerHTML = ""; say("sf-msg", error.message, "err"); return; }
     const mine = (me && me.email || "").toLowerCase();
-    $("sf-list").innerHTML = (data || []).map((r) => `<div class="kid"><div class="who"><div class="avatar">${esc((r.email[0] || "?").toUpperCase())}</div><div><b>${esc(r.email)}${r.role === "admin" ? '<span class="badge admin">Admin</span>' : '<span class="badge">Teacher</span>'}</b><span>${r.email.toLowerCase() === mine ? "You" : "Added " + esc(niceDate(String(r.added_at).slice(0, 10)))}</span></div></div>${r.email.toLowerCase() === mine ? "" : `<button class="link" data-remove="${esc(r.email)}" style="color:var(--danger)">Remove</button>`}</div>`).join("") || `<div class="empty">No staff yet.</div>`;
+    const order = { admin: 0, head: 1, teacher: 2 };
+    const rows = (data || []).filter((r) => r.center_id === centerId || (isAdmin && r.role === "admin")).sort((x, y) => order[x.role] - order[y.role] || x.email.localeCompare(y.email));
+    $("sf-list").innerHTML = rows.map((r) => `<div class="kid"><div class="who"><div class="avatar">${esc((r.email[0] || "?").toUpperCase())}</div><div><b>${esc(r.email)}<span class="badge ${r.role === "teacher" ? "" : "admin"}">${ROLE_LABEL[r.role] || r.role}</span></b><span>${r.email.toLowerCase() === mine ? "You" : "Added " + esc(niceDate(String(r.added_at).slice(0, 10)))}</span></div></div>${canRemove(r, mine) ? `<button class="link" data-remove="${esc(r.email)}" style="color:var(--danger)">Remove</button>` : ""}</div>`).join("") || `<div class="empty">No staff yet.</div>`;
   }
   $("sf-list").addEventListener("click", async (e) => {
     const b = e.target.closest("[data-remove]"); if (!b) return;
@@ -431,12 +477,13 @@
   });
   $("f-staff").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = $("sf-email").value.trim().toLowerCase(), role = $("sf-role").value;
+    const email = $("sf-email").value.trim().toLowerCase(), role = $("sf-role").value || "teacher";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("sf-msg", "Enter a valid email.", "err"); return; }
-    const { error } = await sb.from("staff").upsert({ email, role }, { onConflict: "email" });
-    if (error) { say("sf-msg", error.message, "err"); return; }
+    const row = { email, role, center_id: role === "admin" ? null : centerId, added_by: me ? me.email : null };
+    const { error } = await sb.from("staff").insert(row);
+    if (error) { say("sf-msg", error.code === "23505" ? `${email} already has staff access.` : error.message, "err"); return; }
     e.target.reset();
-    say("sf-msg", `${email} can now sign in as ${role === "admin" ? "an admin" : "a teacher"}.`);
+    say("sf-msg", `${email} can now sign in from the ${centerName || "center"} page as ${role === "head" ? "a head" : role === "admin" ? "an admin" : "a teacher"}.`);
     loadStaff();
   });
 
@@ -484,7 +531,7 @@
     const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email };
     const { error } = editingId
       ? await sb.from("children").update(row).eq("id", editingId)
-      : await sb.from("children").insert(row);
+      : await sb.from("children").insert(Object.assign({ center_id: centerId }, row));
     if (error) { say("k-msg", error.message, "err"); return; }
     say("k-msg", editingId ? `${row.name} updated.` : `${row.name} added. ${row.parent_name} can now sign in with ${email}.`);
     setKidForm(null);
@@ -893,7 +940,8 @@
     $("tabs").hidden = true; $("signout").hidden = false;
     show("parent");
     $("pa-list").innerHTML = `<div class="empty">Loading…</div>`;
-    const { data: kids, error } = await sb.from("children").select("id,name").order("name");
+    const { data: kids, error } = await sb.from("children").select("id,name,center_id").order("name");
+    if (kids && kids[0] && kids[0].center_id) { centerId = kids[0].center_id; store.set("sanora-center", centerId); loadCenterName(centerId); }
     if (error) { $("pa-list").innerHTML = ""; say("pa-msg", error.message, "err"); return; }
     children = kids || [];
     $("pa-title").textContent = children.length === 1 ? `${children[0].name}'s day` : "Your children's day";
@@ -961,7 +1009,7 @@
   });
 
   sb.auth.onAuthStateChange((evt, session) => {
-    if (evt === "SIGNED_OUT") location.reload();
+    if (evt === "SIGNED_OUT" && !signingOut) location.reload();
     else if (evt === "SIGNED_IN" && session) checkAccess(session);
   });
   boot();
