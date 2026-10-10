@@ -63,6 +63,17 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
+  .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.85rem;margin:22px 0 4px}
+  .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+  .ftitle{font-family:Fraunces,serif;font-weight:600;font-size:1.15rem;margin-bottom:2px}
+  .kid .edit{flex:none}
+  .kid .mail{display:block;color:var(--muted);font-size:.85rem;overflow-wrap:anywhere}
+  .kid .mail.missing{color:#c25570}
+  #pa-filter{margin-bottom:6px}
+  .lightbox{position:fixed;inset:0;z-index:20;background:rgba(15,20,17,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .lightbox img{max-width:100%;max-height:calc(100% - 90px);object-fit:contain;border-radius:10px}
+  .lb-bar{display:flex;gap:10px;width:100%;max-width:420px}
+  .lb-bar .btn{margin-top:16px}
   #p-filter{margin-bottom:6px}
   .day{margin-top:26px}
   .day>h2{font-family:Fraunces,serif;font-weight:600;font-size:1.15rem;margin-bottom:10px;position:sticky;top:56px;background:var(--bg);padding:6px 0;z-index:2}
@@ -100,12 +111,18 @@
 
   <!-- Sign in -->
   <section id="v-login" hidden class="center">
-    <h1>Teacher sign in</h1>
-    <p class="hint">Sign in with the Google account your center has approved.</p>
+    <h1>Sign in</h1>
+    <p class="hint">For teachers and parents. Parents: use the email you gave your child's teacher.</p>
     <button class="btn google" id="g-login" type="button">
       <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
       Sign in with Google
     </button>
+    <div class="or"><span>or</span></div>
+    <form id="f-magic">
+      <label for="m-email">Email</label>
+      <input id="m-email" type="email" autocomplete="email" placeholder="you@example.com" required>
+      <button class="btn ghost" type="submit" style="margin-top:12px">Email me a sign-in link</button>
+    </form>
     <div id="login-msg"></div>
   </section>
 
@@ -139,20 +156,34 @@
     <div id="p-msg"></div>
   </section>
 
+  <!-- Parent view -->
+  <section id="v-parent" hidden>
+    <h1 id="pa-title">Your child's photos</h1>
+    <p class="hint">Photos from the day, shared by your child's teachers. Tap a photo to see it full size or save it.</p>
+    <select id="pa-filter" aria-label="Show photos for" hidden></select>
+    <div id="pa-list"></div>
+    <div class="empty" id="pa-empty" hidden>No photos yet. They'll appear here as soon as a teacher uploads them.</div>
+    <div id="pa-msg"></div>
+  </section>
+
   <!-- Children -->
   <section id="v-kids" hidden>
     <h1>Children</h1>
-    <p class="hint">Add each child with the parent's WhatsApp number.</p>
+    <p class="hint">Add each child with their parent's contact. The parent signs in with this email to see their child's photos.</p>
     <div class="card" id="k-list"></div>
     <div class="card">
       <form id="f-kid">
+        <h2 id="k-form-title" class="ftitle">Add a child</h2>
         <label for="k-name">Child's name</label>
         <input id="k-name" required>
         <label for="k-parent">Parent's name</label>
         <input id="k-parent" required>
         <label for="k-phone">Parent's WhatsApp number</label>
         <input id="k-phone" type="tel" inputmode="tel" placeholder="+1 408 555 1234" required>
-        <button class="btn" type="submit">Add child</button>
+        <label for="k-email">Parent's email (for parent sign-in)</label>
+        <input id="k-email" type="email" inputmode="email" autocomplete="off" placeholder="parent@gmail.com" required>
+        <button class="btn" type="submit" id="k-submit">Add child</button>
+        <button class="btn ghost" type="button" id="k-cancel" hidden>Cancel</button>
       </form>
       <div id="k-msg"></div>
     </div>
@@ -164,6 +195,14 @@
   <button data-tab="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Upload</button>
   <button data-tab="kids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg>Children</button>
 </div></nav>
+
+<div class="lightbox" id="lightbox" hidden>
+  <img id="lb-img" alt="">
+  <div class="lb-bar">
+    <button class="btn ghost" id="lb-close" type="button">Close</button>
+    <button class="btn" id="lb-save" type="button">Save photo</button>
+  </div>
+</div>
 
 <div class="sharebar" id="sharebar" hidden><div class="wrap">
   <button class="x" id="sb-clear" aria-label="Clear selection">×</button>
@@ -178,7 +217,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const cfg = window.SANORA_CONFIG || {};
-  const views = ["setup", "login", "photos", "upload", "kids"];
+  const views = ["setup", "login", "photos", "upload", "kids", "parent"];
   const show = (v) => views.forEach((x) => ($("v-" + x).hidden = x !== v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
@@ -201,7 +240,7 @@
     const { data } = await sb.auth.getSession();
     const denied = sessionStorageGet("sanora-denied");
     if (data.session) return checkAccess(data.session);
-    showLogin(denied ? `${denied} doesn't have access to Sanora. Ask your center to add this Google account.` : "");
+    showLogin(denied ? `${denied} isn't linked to Sanora yet. Parents: ask your child's teacher to add this email. Teachers: ask your center to give you access.` : "");
   }
   function sessionStorageGet(k) { try { const v = sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; } catch { return null; } }
   function sessionStorageSet(k, v) { try { sessionStorage.setItem(k, v); } catch {} }
@@ -214,19 +253,28 @@
     });
     if (error) say("login-msg", error.message, "err");
   });
+  $("f-magic").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("m-email").value.trim().toLowerCase();
+    const btn = e.target.querySelector("button"); btn.disabled = true;
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + "/app/" } });
+    btn.disabled = false;
+    if (error) say("login-msg", error.message, "err");
+    else say("login-msg", `Check ${email} for a sign-in link. It may take a minute — look in spam too.`);
+  });
   $("signout").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
 
-  // Only allowlisted emails get in; everyone else is signed straight back out.
+  // Staff see the teacher app, parents see their children's photos, anyone else is signed straight back out.
   let checking = null;
   function checkAccess(session) { return checking || (checking = doCheck(session)); }
   async function doCheck(session) {
-    const { data: ok, error } = await sb.rpc("is_staff");
-    if (error || !ok) {
+    const { data: role, error } = await sb.rpc("my_role");
+    if (error || !role) {
       sessionStorageSet("sanora-denied", session.user.email || "This account");
       await sb.auth.signOut();
       return;
     }
-    enter();
+    if (role === "staff") enter(); else enterParent();
   }
 
   async function enter() {
@@ -254,7 +302,7 @@
   }
   function renderChildren() {
     $("k-list").innerHTML = children.length
-      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span></div></div></div>`).join("")
+      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
       : `<div class="empty">No children yet. Add the first one below.</div>`;
     document.querySelectorAll(".child-select").forEach((sel) => {
       const keep = sel.value;
@@ -264,16 +312,35 @@
     renderFilter();
     updateUploadBtn();
   }
+  let editingId = null;
+  function setKidForm(c) {
+    editingId = c ? c.id : null;
+    $("k-name").value = c ? c.name : ""; $("k-parent").value = c ? c.parent_name : "";
+    $("k-phone").value = c ? c.parent_phone : ""; $("k-email").value = c ? (c.parent_email || "") : "";
+    $("k-form-title").textContent = c ? `Edit ${c.name}` : "Add a child";
+    $("k-submit").textContent = c ? "Save changes" : "Add child";
+    $("k-cancel").hidden = !c;
+  }
+  $("k-list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-edit]"); if (!b) return;
+    setKidForm(children.find((c) => c.id === b.dataset.edit)); say("k-msg", "");
+    $("f-kid").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("k-cancel").addEventListener("click", () => { setKidForm(null); say("k-msg", ""); });
   $("f-kid").addEventListener("submit", async (e) => {
     e.preventDefault();
     const phone = $("k-phone").value.trim();
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8) { say("k-msg", "Enter the full WhatsApp number with country code.", "err"); return; }
-    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits };
-    const { error } = await sb.from("children").insert(row);
+    const email = $("k-email").value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("k-msg", "Enter a valid parent email.", "err"); return; }
+    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email };
+    const { error } = editingId
+      ? await sb.from("children").update(row).eq("id", editingId)
+      : await sb.from("children").insert(row);
     if (error) { say("k-msg", error.message, "err"); return; }
-    e.target.reset();
-    say("k-msg", `${row.name} added.`);
+    say("k-msg", editingId ? `${row.name} updated.` : `${row.name} added. ${row.parent_name} can now sign in with ${email}.`);
+    setKidForm(null);
     await loadChildren();
   });
 
@@ -479,6 +546,66 @@
     if (kid) window.open(`https://wa.me/${kid.parent_phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`, "_blank");
     await markShared(ids);
     say("p-msg", "This browser can't share photos directly, so they were downloaded. Attach them in the WhatsApp chat that just opened.");
+  });
+
+  // ---------- parent view ----------
+  let paPhotos = [], paUrls = new Map(), lbPhoto = null;
+  async function enterParent() {
+    $("tabs").hidden = true; $("signout").hidden = false;
+    show("parent");
+    $("pa-list").innerHTML = `<div class="empty">Loading photos…</div>`;
+    const { data: kids, error } = await sb.from("children").select("id,name").order("name");
+    if (error) { $("pa-list").innerHTML = ""; say("pa-msg", error.message, "err"); return; }
+    children = kids || [];
+    $("pa-title").textContent = children.length === 1 ? `${children[0].name}'s photos` : "Your children's photos";
+    $("pa-filter").hidden = children.length < 2;
+    $("pa-filter").innerHTML = `<option value="">All children</option>` + children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    const res = await sb.from("photos").select("id,child_id,taken_on,path,created_at").order("taken_on", { ascending: false }).order("created_at").limit(1000);
+    if (res.error) { $("pa-list").innerHTML = ""; say("pa-msg", res.error.message, "err"); return; }
+    paPhotos = res.data || [];
+    for (let i = 0; i < paPhotos.length; i += 100) {
+      const { data: signed } = await sb.storage.from("photos").createSignedUrls(paPhotos.slice(i, i + 100).map((p) => p.path), 3600);
+      (signed || []).forEach((x) => x.signedUrl && paUrls.set(x.path, x.signedUrl));
+    }
+    renderParent();
+  }
+  $("pa-filter").addEventListener("change", renderParent);
+  function renderParent() {
+    const only = $("pa-filter").value;
+    const rows = paPhotos.filter((p) => !only || p.child_id === only);
+    $("pa-empty").hidden = rows.length > 0;
+    const days = new Map();
+    rows.forEach((p) => { if (!days.has(p.taken_on)) days.set(p.taken_on, []); days.get(p.taken_on).push(p); });
+    const many = children.length > 1;
+    $("pa-list").innerHTML = [...days.keys()].sort().reverse().map((d) => {
+      const list = days.get(d);
+      const byKid = many ? [...new Set(list.map((p) => p.child_id))] : [null];
+      return `<div class="day"><h2>${esc(dayLabel(d))}</h2>` + byKid.map((cid) => {
+        const ps = cid ? list.filter((p) => p.child_id === cid) : list;
+        const kid = cid ? kidById(cid) : null;
+        return `<div class="group">${kid ? `<div class="ghead"><div class="who"><div class="avatar">${esc((kid.name[0] || "?").toUpperCase())}</div><div><b>${esc(kid.name)}</b><span>${ps.length} photo${ps.length > 1 ? "s" : ""}</span></div></div></div>` : ""}
+          <div class="thumbs" ${kid ? "" : 'style="margin-top:0"'}>${ps.map((p) => `<button class="thumb" data-pid="${p.id}"><img loading="lazy" src="${esc(paUrls.get(p.path) || "")}" alt="Photo"></button>`).join("")}</div></div>`;
+      }).join("") + `</div>`;
+    }).join("");
+  }
+  $("pa-list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pid]"); if (!b) return;
+    lbPhoto = paPhotos.find((p) => p.id === b.dataset.pid);
+    $("lb-img").src = paUrls.get(lbPhoto.path) || "";
+    $("lightbox").hidden = false;
+  });
+  $("lb-close").addEventListener("click", () => { $("lightbox").hidden = true; lbPhoto = null; });
+  $("lb-save").addEventListener("click", async () => {
+    if (!lbPhoto) return;
+    const { data, error } = await sb.storage.from("photos").download(lbPhoto.path);
+    if (error || !data) { say("pa-msg", "Couldn't download the photo. Try again.", "err"); return; }
+    const kid = kidById(lbPhoto.child_id);
+    const f = new File([data], `${(kid ? kid.name : "sanora").replace(/\W+/g, "-")}-${lbPhoto.taken_on}.jpg`, { type: "image/jpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) {
+      try { await navigator.share({ files: [f] }); } catch {}
+    } else {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
+    }
   });
 
   sb.auth.onAuthStateChange((evt, session) => {
