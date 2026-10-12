@@ -1286,16 +1286,18 @@
     return `<div class="act"><div class="tm">${a.act_time ? fmtTime(a.act_time) : ""}</div><div><span class="tag">${esc(a.kind)}</span>${a.source === "ai" ? '<span class="tag ai">From photos</span>' : ""}<b>${esc(a.title || a.kind)}</b>${a.details ? `<p>${esc(a.details)}</p>` : ""}${canDelete ? `<div class="who2">${esc(whoText(a.child_ids))}</div>` : ""}</div>${canDelete ? `<button class="link" data-del-act="${a.id}" style="color:var(--danger)">Delete</button>` : ""}</div>`;
   }
   // Recognize activities from a day's photos (server function; teacher entries are left as they are)
-  let aiBusy = false;
+  let aiBusy = false, aiAgain = null;
   async function analyzePhotos(date, quiet) {
-    if (aiBusy || !centerId) return null;
+    if (!centerId) return null;
+    if (aiBusy) { aiAgain = date; return null; }   // another upload finished mid-run: go again when this one ends
     aiBusy = true; $("ac-ai").disabled = true;
     if (!quiet) say("ac-ai-msg", "Looking at the day's photos…");
     try {
       const { data: sess } = await sb.auth.getSession();
       const r = await fetch("/api/analyze-activities", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + (sess.session ? sess.session.access_token : "") },
-        body: JSON.stringify({ center_id: centerId, date, tz_offset_min: new Date().getTimezoneOffset() })
+        body: JSON.stringify({ center_id: centerId, date, tz_offset_min: new Date().getTimezoneOffset() }),
+        keepalive: true   // finish even if the teacher leaves the app right after uploading
       });
       const j = await r.json().catch(() => ({ error: "Unexpected response from the server." }));
       if (!r.ok) throw new Error(j.error || "Couldn't analyze the photos.");
@@ -1306,7 +1308,10 @@
     } catch (e) {
       if (!quiet) say("ac-ai-msg", e.message, "err");
       return null;
-    } finally { aiBusy = false; $("ac-ai").disabled = false; }
+    } finally {
+      aiBusy = false; $("ac-ai").disabled = false;
+      if (aiAgain) { const d = aiAgain; aiAgain = null; analyzePhotos(d, true); }
+    }
   }
   $("ac-ai").addEventListener("click", () => analyzePhotos($("ac-date").value || today(), false));
 
