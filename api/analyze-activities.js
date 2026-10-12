@@ -19,7 +19,18 @@ const ANTHROPIC_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 const MAX_PHOTOS = 20;
 
-const KINDS = ["Circle time", "Art & craft", "Music & movement", "Story time", "Outdoor play", "Sensory play", "Learning", "Other"];
+// The same categories teachers pick from in the Activities tab, with what counts as each
+const CATEGORIES = [
+  ["Circle time", "children sitting together in a circle or group on the floor or rug with a teacher: greetings, calendar, songs, sharing"],
+  ["Art & craft", "painting, drawing, coloring, crayons, markers, glue, cutting, collage, play dough sculpting, making crafts"],
+  ["Music & movement", "singing, dancing, instruments (drums, shakers, xylophone), movement games, stretching or yoga"],
+  ["Story time", "a book being read or looked at, children listening to a story, puppets or storytelling"],
+  ["Outdoor play", "playing outside: playground, slide, swings, sandbox, riding toys, ball games, garden, nature walk"],
+  ["Sensory play", "sensory bins or tables, water play, sand or rice or bean bins, slime, play dough squishing, textures, bubbles"],
+  ["Learning", "puzzles, blocks and building, shapes, colors, counting, letters and numbers, sorting and matching, pretend play, science"],
+  ["Other", "a clear activity that fits none of the categories above"]
+];
+const KINDS = CATEGORIES.map((c) => c[0]);
 
 const TOOL = {
   name: "record_activities",
@@ -29,11 +40,11 @@ const TOOL = {
     properties: {
       activities: {
         type: "array",
-        description: "One entry per distinct activity. Group photos of the same activity together. Leave out activities already logged by teachers.",
+        description: "At most one entry per category. Put every photo showing that category into that entry. Leave out categories already logged by teachers.",
         items: {
           type: "object",
           properties: {
-            kind: { type: "string", enum: KINDS, description: "Closest category." },
+            kind: { type: "string", enum: KINDS, description: "The category this activity belongs to. Use 'Other' only when none of the others fit." },
             title: { type: "string", description: "Short, specific name, e.g. 'Leaf painting', 'Building block towers'. Max 6 words." },
             details: { type: "string", description: "One warm, factual sentence for parents describing what the children did. No names, no guesses about feelings beyond what is visible." },
             photos: { type: "array", items: { type: "integer" }, description: "Photo numbers (as labeled) that show this activity." }
@@ -106,10 +117,11 @@ module.exports = async (req, res) => {
       type: "text",
       text: [
         `These are photos from one day (${date}) at a small home daycare and preschool for children aged 10 months to 5 years.`,
-        "Identify the distinct activities the children were doing (for example painting, block building, story time, outdoor play, music, sensory bins).",
-        "Group photos of the same activity into one entry. Ignore photos that don't show a clear activity (e.g. just a portrait or a meal).",
+        "Check every photo against each of these activity categories:\n" + CATEGORIES.map(([k, d]) => `- ${k}: ${d}`).join("\n"),
+        "Return at most one entry per category, listing all the photos that show it. If one photo clearly shows two categories, it may appear in both.",
+        "Ignore photos that don't show a clear activity (e.g. just a portrait, a nap or a meal). Use 'Other' only when nothing else fits.",
         existing.length
-          ? "Teachers already logged these activities today, so do NOT include them again:\n" + existing.map((a) => `- ${a.kind}: ${a.title || a.kind}${a.details ? " (" + a.details + ")" : ""}`).join("\n")
+          ? "Teachers already logged these activities today. Do NOT return entries for these categories:\n" + existing.map((a) => `- ${a.kind}: ${a.title || a.kind}${a.details ? " (" + a.details + ")" : ""}`).join("\n")
           : "Teachers haven't logged any activities today.",
         "Describe only what is visible. Never mention children's names or appearance in the title or details. If there is nothing new, return an empty list.",
         "Call record_activities with the result."
@@ -125,9 +137,17 @@ module.exports = async (req, res) => {
     const call = (aj.content || []).find((c) => c.type === "tool_use" && c.name === TOOL.name);
     const found = (call && call.input && Array.isArray(call.input.activities)) ? call.input.activities : [];
 
-    // 6. Turn the result into activity rows
-    const rows = [];
+    // 6. Turn the result into activity rows: one per category, never a category a teacher already logged
+    const taken = new Set(existing.map((a) => a.kind));
+    const byKind = new Map();
     for (const a of found) {
+      const kind = KINDS.includes(a.kind) ? a.kind : "Other";
+      if (taken.has(kind)) continue;
+      if (!byKind.has(kind)) byKind.set(kind, { ...a, kind, photos: [] });
+      const m = byKind.get(kind); m.photos = [...new Set([...m.photos, ...(a.photos || [])])];
+    }
+    const rows = [];
+    for (const a of byKind.values()) {
       const ps = (a.photos || []).map((n) => usable[n - 1]).filter(Boolean);
       if (!ps.length) continue;
       const first = ps.reduce((m, p) => (p.created_at < m ? p.created_at : m), ps[0].created_at);

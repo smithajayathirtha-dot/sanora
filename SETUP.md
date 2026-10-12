@@ -51,8 +51,9 @@ whole class or some children. Parents see each day's activities in their child's
 
 ### Activities recognized from photos
 After each upload (and when a teacher taps **From photos** in Activities), the server function `api/analyze-activities.js`
-sends that day's photos (up to 20) to Claude's vision API, recognizes the activities, and adds them marked **From photos**,
-tagged with the children in those photos. Teacher-entered activities are never changed, and the model is told to skip them.
+sends that day's photos (up to 20) to Claude's vision API, checks each photo against the eight activity categories (Circle time, Art & craft, Music & movement, Story time,
+Outdoor play, Sensory play, Learning, Other), and adds at most one entry per category, marked **From photos**,
+tagged with the children in those photos. Teacher-entered activities are never changed, and categories a teacher already logged that day are skipped.
 Re-running replaces only the earlier "From photos" entries for that day.
 
 **To switch it on:** create an API key at https://console.anthropic.com → in Vercel open the **sanora** project →
