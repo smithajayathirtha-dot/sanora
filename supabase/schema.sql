@@ -123,6 +123,8 @@ create table if not exists public.activities (
   created_at  timestamptz not null default now()
 );
 create index if not exists activities_center_date on public.activities (center_id, act_date);
+alter table public.activities add column if not exists source text not null default 'teacher';  -- 'teacher' or 'ai' (recognized from photos)
+alter table public.activities add column if not exists photo_ids uuid[];                          -- photos an 'ai' activity was recognized from
 
 -- ===============================================================
 -- 2. Who is signed in (all keyed on the verified sign-in email)

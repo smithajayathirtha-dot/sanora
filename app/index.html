@@ -90,6 +90,11 @@
   @keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
   @media (prefers-reduced-motion:reduce){.modal,.modal .sheet{animation:none}}
   .kids-pick{margin-top:10px}
+  .ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .ai-btn{display:inline-flex;align-items:center;gap:6px;background:#efe7fb;color:#5b3c9b;flex:none}
+  .ai-btn svg{width:16px;height:16px}
+  .ai-btn:disabled{opacity:.6}
+  .act .tag.ai{color:#5b3c9b;background:#efe7fb;margin-left:4px}
   .acts{display:grid;gap:0}
   .act{display:grid;grid-template-columns:64px 1fr auto;gap:10px;padding:12px 0;border-top:1px solid var(--line);align-items:start}
   .act:first-child{border-top:0}
@@ -263,7 +268,13 @@
       <button class="btn" id="ac-save" type="button">Save activity</button>
       <div id="ac-msg"></div>
     </div>
-    <div class="card"><h2 class="ftitle" id="ac-list-title">Today's activities</h2><div id="ac-list"></div></div>
+    <div class="card">
+      <div class="ai-head"><h2 class="ftitle" id="ac-list-title">Today's activities</h2>
+        <button class="btn small ai-btn" id="ac-ai" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.8 1.7 1.7.8-1.7.8L19 20l-.8-1.7-1.7-.8 1.7-.8z"/></svg>From photos</button></div>
+      <p class="hint" style="margin:2px 0 0">Activities are also recognized from the day's photos after each upload. Your own entries are never changed.</p>
+      <div id="ac-ai-msg"></div>
+      <div id="ac-list"></div>
+    </div>
   </section>
 
   <!-- Upload -->
@@ -740,6 +751,7 @@
     $("u-prog").hidden = true; updateUploadBtn();
     if (failed) say("u-msg", `${ok} uploaded, ${failed} failed. Check your connection and try those again.`, "err");
     else say("u-msg", `${ok} photo${ok > 1 ? "s" : ""} saved for ${kid ? kid.name : "child"} · ${niceDate(day)}. Find them in Photos.`);
+    if (ok) analyzePhotos(day, true).then((m) => { if (m) say("u-msg", `${$("u-msg").textContent.trim()} Activities: ${m}`); });
   });
 
   // ---------- photos library ----------
@@ -1271,8 +1283,33 @@
   }
   const whoText = (ids) => !ids || !ids.length ? "Whole class" : ids.map((id) => kidById(id)?.name).filter(Boolean).join(", ");
   function actItem(a, canDelete) {
-    return `<div class="act"><div class="tm">${a.act_time ? fmtTime(a.act_time) : ""}</div><div><span class="tag">${esc(a.kind)}</span><b>${esc(a.title || a.kind)}</b>${a.details ? `<p>${esc(a.details)}</p>` : ""}${canDelete ? `<div class="who2">${esc(whoText(a.child_ids))}</div>` : ""}</div>${canDelete ? `<button class="link" data-del-act="${a.id}" style="color:var(--danger)">Delete</button>` : ""}</div>`;
+    return `<div class="act"><div class="tm">${a.act_time ? fmtTime(a.act_time) : ""}</div><div><span class="tag">${esc(a.kind)}</span>${a.source === "ai" ? '<span class="tag ai">From photos</span>' : ""}<b>${esc(a.title || a.kind)}</b>${a.details ? `<p>${esc(a.details)}</p>` : ""}${canDelete ? `<div class="who2">${esc(whoText(a.child_ids))}</div>` : ""}</div>${canDelete ? `<button class="link" data-del-act="${a.id}" style="color:var(--danger)">Delete</button>` : ""}</div>`;
   }
+  // Recognize activities from a day's photos (server function; teacher entries are left as they are)
+  let aiBusy = false;
+  async function analyzePhotos(date, quiet) {
+    if (aiBusy || !centerId) return null;
+    aiBusy = true; $("ac-ai").disabled = true;
+    if (!quiet) say("ac-ai-msg", "Looking at the day's photos…");
+    try {
+      const { data: sess } = await sb.auth.getSession();
+      const r = await fetch("/api/analyze-activities", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + (sess.session ? sess.session.access_token : "") },
+        body: JSON.stringify({ center_id: centerId, date, tz_offset_min: new Date().getTimezoneOffset() })
+      });
+      const j = await r.json().catch(() => ({ error: "Unexpected response from the server." }));
+      if (!r.ok) throw new Error(j.error || "Couldn't analyze the photos.");
+      const msg = j.note ? j.note : j.added ? `Added ${j.added} activit${j.added > 1 ? "ies" : "y"} from ${j.photos} photo${j.photos > 1 ? "s" : ""}: ${j.activities.map((a) => a.title || a.kind).join(", ")}.` : `Checked ${j.photos} photo${j.photos > 1 ? "s" : ""}; nothing new beyond what's already logged.`;
+      if (!quiet) say("ac-ai-msg", msg);
+      if (!$("v-act").hidden && ($("ac-date").value || today()) === date) refreshActs();
+      return msg;
+    } catch (e) {
+      if (!quiet) say("ac-ai-msg", e.message, "err");
+      return null;
+    } finally { aiBusy = false; $("ac-ai").disabled = false; }
+  }
+  $("ac-ai").addEventListener("click", () => analyzePhotos($("ac-date").value || today(), false));
+
   function renderActList() {
     const d = $("ac-date").value || today();
     $("ac-list-title").textContent = d === today() ? "Today's activities" : `Activities · ${niceDate(d)}`;

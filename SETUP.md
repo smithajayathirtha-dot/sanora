@@ -49,6 +49,16 @@ Teachers log what the children did: pick an activity (circle time, art & craft, 
 outdoor play, sensory play, learning, other), an optional title, time and details, and whether it was the
 whole class or some children. Parents see each day's activities in their child's day, only the ones their child took part in.
 
+### Activities recognized from photos
+After each upload (and when a teacher taps **From photos** in Activities), the server function `api/analyze-activities.js`
+sends that day's photos (up to 20) to Claude's vision API, recognizes the activities, and adds them marked **From photos**,
+tagged with the children in those photos. Teacher-entered activities are never changed, and the model is told to skip them.
+Re-running replaces only the earlier "From photos" entries for that day.
+
+**To switch it on:** create an API key at https://console.anthropic.com → in Vercel open the **sanora** project →
+**Settings → Environment Variables** → add `ANTHROPIC_API_KEY` (all environments) → **Deployments → Redeploy**.
+Optional: `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`). Then re-run `supabase/schema.sql` (adds the `source` and `photo_ids` columns).
+
 ## How the photo flow works
 1. **Upload**: the teacher picks a child and a date, then takes or chooses photos.
    The photos are shrunk to a maximum of 1600 px and saved under `<child>/<date>/` in the private bucket.
