@@ -128,13 +128,13 @@ module.exports = async (req, res) => {
           ? "Teachers already logged these activities today. Do NOT return entries for these categories:\n" + existing.map((a) => `- ${a.kind}: ${a.title || a.kind}${a.details ? " (" + a.details + ")" : ""}`).join("\n")
           : "Teachers haven't logged any activities today.",
         "Describe only what is visible. Never mention children's names or appearance in the title or details. If there is nothing new, return an empty list.",
-        "Call record_activities with the result."
+        "Call the record_activities tool with the result. If you can't use the tool, reply with only JSON in the form {\"activities\": [...]}."
       ].join("\n\n")
     });
     const ar = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: { "x-api-key": API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1500, tools: [TOOL], tool_choice: { type: "tool", name: TOOL.name }, messages: [{ role: "user", content }] })
+      body: JSON.stringify({ model: MODEL, max_tokens: 1500, tools: [TOOL], tool_choice: { type: "auto" }, messages: [{ role: "user", content }] })
     });
     const aj = await ar.json();
     if (!ar.ok) {
@@ -142,8 +142,14 @@ module.exports = async (req, res) => {
       const hint = ar.status === 401 ? ` (the key in Vercel starts "${API_KEY.slice(0, 7)}…" and is ${API_KEY.length} characters; a Claude API key starts "sk-ant-")` : "";
       return send(res, 502, { error: "Photo recognition failed: " + m + hint });
     }
+    // Prefer the tool call; fall back to JSON in a text reply
     const call = (aj.content || []).find((c) => c.type === "tool_use" && c.name === TOOL.name);
-    const found = (call && call.input && Array.isArray(call.input.activities)) ? call.input.activities : [];
+    let found = (call && call.input && Array.isArray(call.input.activities)) ? call.input.activities : null;
+    if (!found) {
+      const text = (aj.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n");
+      const m = text.match(/\{[\s\S]*\}/);
+      try { const parsed = m ? JSON.parse(m[0]) : null; found = parsed && Array.isArray(parsed.activities) ? parsed.activities : []; } catch { found = []; }
+    }
 
     // 6. Turn the result into activity rows: one per category, never a category a teacher already logged
     const taken = new Set(existing.map((a) => a.kind));
