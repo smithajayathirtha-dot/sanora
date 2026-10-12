@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#3f7d4e">
+<link rel="manifest" href="/app/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sanora">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Sanora · Teacher</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M32 60V34' stroke='%233f7d4e' stroke-width='4' stroke-linecap='round'/><path d='M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z' fill='%2363a86f'/><path d='M32 40c10 0 16-6 17-14-9 0-16 5-17 14z' fill='%2363a86f'/><path d='M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z' fill='%23e9849a'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -136,6 +142,8 @@
   .seg{display:flex;flex-wrap:wrap;gap:6px}
   .seg button{flex:1 1 auto;font:inherit;font-size:.92rem;font-weight:600;padding:10px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer}
   .seg button.on{background:var(--leaf);border-color:var(--leaf);color:#fff}
+  .seg button:disabled{opacity:.45;cursor:not-allowed}
+  .seg button.done:disabled{opacity:1;background:var(--leaf-soft);border-color:var(--leaf-soft);color:var(--leaf)}
   .sub{margin-top:8px}
   .sub label{margin-top:4px}
   .nstat{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;font:inherit;color:inherit;text-align:left}
@@ -1041,12 +1049,22 @@
   }
   function autoKind() {
     const r = attFor($("att-child").value, $("att-date").value);
-    attKind = r && r.check_in && !r.check_out ? "out" : "in";
+    attKind = r && r.check_in ? "out" : "in";   // once checked in, only check-out is left for that day
     paintKind();
   }
   function paintKind() {
-    $("att-kind").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === attKind));
-    $("att-save").textContent = attKind === "in" ? "Check in" : "Check out";
+    const r0 = attFor($("att-child").value, $("att-date").value);
+    const doneIn = !!(r0 && r0.check_in), doneOut = !!(r0 && r0.check_out);
+    $("att-kind").querySelectorAll("button").forEach((b) => {
+      const done = b.dataset.v === "in" ? doneIn : doneOut;
+      b.disabled = done || (b.dataset.v === "out" && !doneIn);
+      b.classList.toggle("done", done);
+      b.classList.toggle("on", !done && b.dataset.v === attKind);
+      b.textContent = b.dataset.v === "in" ? (doneIn ? `✓ Checked in ${fmtTime(r0.check_in)}` : "Check in") : (doneOut ? `✓ Checked out ${fmtTime(r0.check_out)}` : "Check out");
+    });
+    const allDone = doneIn && doneOut;
+    $("att-save").disabled = allDone;
+    $("att-save").textContent = allDone ? "Done for the day" : attKind === "in" ? "Check in" : "Check out";
     const r = attFor($("att-child").value, $("att-date").value);
     const kid = kidById($("att-child").value);
     const who = kid ? kid.name : "Your child";
@@ -1054,7 +1072,7 @@
     $("att-status").textContent = !r ? `${who} isn't checked in ${when} yet.`
       : `${who} ${when}: in ${r.check_in ? fmtTime(r.check_in) : "—"} · out ${r.check_out ? fmtTime(r.check_out) : "—"}`;
   }
-  $("att-kind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; attKind = b.dataset.v; paintKind(); say("att-msg", ""); });
+  $("att-kind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.disabled) return; attKind = b.dataset.v; paintKind(); say("att-msg", ""); });
   $("att-child").addEventListener("change", () => { autoKind(); say("att-msg", ""); });
   $("att-date").addEventListener("change", () => { autoKind(); say("att-msg", ""); });
   $("att-save").addEventListener("click", async () => {
@@ -1065,6 +1083,9 @@
     drawSig();
     const r = attFor(cid, d);
     if (attKind === "out" && r && r.check_in && t < hm(r.check_in)) { say("att-msg", `Check-out can't be before check-in (${fmtTime(r.check_in)}).`, "err"); return; }
+    if (attKind === "in" && r && r.check_in) { say("att-msg", `Already checked in at ${fmtTime(r.check_in)} for this day.`, "err"); return; }
+    if (attKind === "out" && r && r.check_out) { say("att-msg", `Already checked out at ${fmtTime(r.check_out)} for this day.`, "err"); return; }
+    if (attKind === "out" && !(r && r.check_in)) { say("att-msg", "Check in first.", "err"); return; }
     if (attKind === "in" && r && r.check_out && t > hm(r.check_out)) { say("att-msg", `Check-in can't be after check-out (${fmtTime(r.check_out)}).`, "err"); return; }
     const k = attKind === "in" ? "check_in" : "check_out";
     const row = { child_id: cid, att_date: d, [k]: t, [k + "_name"]: name, [k + "_sig"]: sigData(), [k + "_by"]: me ? me.email : null, updated_at: new Date().toISOString() };

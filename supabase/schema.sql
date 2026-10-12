@@ -327,6 +327,24 @@ drop policy if exists "parent read activities" on public.activities;
 create policy "parent read activities" on public.activities
   for select to authenticated using (public.can_parent_see_activity(center_id, child_ids));
 
+-- Once a check-in (or check-out) is recorded, parents can't change it; staff can correct or clear it
+create or replace function public.lock_attendance()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if public.is_staff() then return new; end if;
+  if old.check_in is not null and new.check_in is distinct from old.check_in then
+    raise exception 'Already checked in for this day' using errcode = 'P0001';
+  end if;
+  if old.check_out is not null and new.check_out is distinct from old.check_out then
+    raise exception 'Already checked out for this day' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists attendance_lock on public.attendance;
+create trigger attendance_lock before update on public.attendance
+  for each row execute function public.lock_attendance();
+
 -- Private storage bucket for the photo files
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', false)
