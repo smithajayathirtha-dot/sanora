@@ -12,6 +12,11 @@ create table if not exists public.centers (
   name       text not null,
   created_at timestamptz not null default now()
 );
+-- Where the center is, for parent arrival reminders (set by the head from the app)
+alter table public.centers add column if not exists lat double precision;
+alter table public.centers add column if not exists lng double precision;
+alter table public.centers add column if not exists radius_m int not null default 150;
+
 insert into public.centers (id, name) values
   ('smiles-and-imagination', 'Smiles and Imagination')
 on conflict (id) do update set name = excluded.name;
@@ -236,6 +241,11 @@ create policy "anyone read centers" on public.centers for select to anon, authen
 drop policy if exists "admin manage centers" on public.centers;
 create policy "admin manage centers" on public.centers
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "head update own center" on public.centers;
+create policy "head update own center" on public.centers
+  for update to authenticated
+  using (id = public.my_center() and public.my_staff_role() = 'head')
+  with check (id = public.my_center());
 
 -- Staff list
 alter table public.staff enable row level security;

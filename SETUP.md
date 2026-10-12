@@ -72,6 +72,17 @@ The date defaults to today and the time to now, and both can be changed. The par
 The button switches to **Check out** once the child is checked in, and a check-out time earlier than the check-in time is rejected.
 Teachers see every child's entries for any date in the **Check-in** tab: times, the parent's name and signature, and how many children are here now.
 
+## Arrival reminders (check in / check out near the daycare)
+1. **Head, once:** stand at the center, open **☰ → Staff → Center location** and tap **Use my current location as the center**.
+2. **Parent:** on their screen, tap **Turn on** next to *Arrival reminders* and allow location.
+   While the app is open and they're within about 150 m of the center, a popup asks
+   **Check in Sanmay?** (before 12 noon or not yet checked in) or **Check out Sanmay?** (after 12 noon, once checked in).
+   **Yes** saves the current time with their generated signature; **Not now** stops asking for the rest of that day.
+3. **Prompt when the app is closed (iPhone):** web apps can't watch location in the background, so use Shortcuts:
+   Shortcuts app → **Automation** → **+** → **Arrive** → choose the daycare's address → **Run Immediately** →
+   action **Open URLs** with `https://sanorakids.vercel.app/app/?arrive=1`. On arrival the app opens straight to the popup.
+   (Android: an automation app such as Tasker or MacroDroid can open the same link on arrival.)
+
 ## Parent sign-in
 Parents tap **Sign in** on their center's page and sign in with the email the teacher entered.
 They only see photos of their own children, organized by day. They can tap a photo to view it full size and save it.

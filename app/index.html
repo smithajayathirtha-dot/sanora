@@ -63,6 +63,26 @@
   .progress{height:6px;border-radius:999px;background:var(--leaf-soft);overflow:hidden;margin-top:14px}
   .progress i{display:block;height:100%;width:0;background:var(--leaf);transition:width .2s}
   .center{max-width:400px;margin:0 auto}
+  .btn.small{width:auto;margin:0;padding:9px 14px;font-size:.88rem;border-radius:999px}
+  .arr-card{display:flex;align-items:center;gap:12px;padding:14px 16px}
+  .arr-ic{flex:none;width:38px;height:38px;border-radius:12px;background:var(--leaf-soft);color:var(--leaf);display:grid;place-items:center}
+  .arr-ic svg{width:20px;height:20px}
+  .arr-txt{flex:1;min-width:0}
+  .arr-txt b{display:block;font-size:.95rem}
+  .arr-txt span{display:block;color:var(--muted);font-size:.84rem;line-height:1.35}
+  .arr-card.on .btn.small{background:var(--leaf-soft);color:var(--leaf)}
+  .modal{position:fixed;inset:0;z-index:40;background:rgba(20,26,22,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:fade .15s ease-out}
+  .modal .sheet{width:100%;max-width:420px;background:var(--surface);border-radius:24px;padding:24px 20px 18px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25);animation:up .2s ease-out}
+  .modal .pin{width:52px;height:52px;border-radius:50%;background:var(--leaf-soft);color:var(--leaf);display:grid;place-items:center;margin:0 auto 10px}
+  .modal .pin svg{width:26px;height:26px}
+  .modal .where{color:var(--muted);font-size:.85rem;font-weight:700;letter-spacing:.02em}
+  .modal h2{font-family:Fraunces,serif;font-weight:600;font-size:1.45rem;margin:4px 0 6px}
+  .modal p{color:var(--muted)}
+  .modal .row{margin-top:16px}
+  .modal .row .btn{margin-top:0}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+  @media (prefers-reduced-motion:reduce){.modal,.modal .sheet{animation:none}}
   .kids-pick{margin-top:10px}
   .acts{display:grid;gap:0}
   .act{display:grid;grid-template-columns:64px 1fr auto;gap:10px;padding:12px 0;border-top:1px solid var(--line);align-items:start}
@@ -300,6 +320,11 @@
   <section id="v-parent" hidden>
     <h1 id="pa-title">Your child's photos</h1>
     <p class="hint">Daily notes and photos from your child's teachers. Tap a photo to see it full size or save it.</p>
+    <div class="card arr-card" id="arr-card" hidden>
+      <div class="arr-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+      <div class="arr-txt"><b>Arrival reminders</b><span id="arr-status">Get a check-in or check-out prompt when you're at the daycare.</span></div>
+      <button class="btn small" id="arr-toggle" type="button">Turn on</button>
+    </div>
     <div class="card" id="att-card">
       <h2 class="ftitle">Check-in / Check-out</h2>
       <p class="hint" id="att-status" style="margin:2px 0 0"></p>
@@ -327,6 +352,12 @@
     <h1>Staff</h1>
     <p class="hint" id="sf-hint">People here sign in with Google from the center page and use the teacher app.</p>
     <div class="card" id="sf-list"></div>
+    <div class="card" id="loc-card" hidden>
+      <h2 class="ftitle">Center location</h2>
+      <p class="hint" id="loc-status" style="margin:4px 0 0"></p>
+      <button class="btn ghost" id="loc-set" type="button">Use my current location as the center</button>
+      <div id="loc-msg"></div>
+    </div>
     <div class="card">
       <form id="f-staff">
         <h2 class="ftitle" id="sf-title">Add a teacher</h2>
@@ -374,6 +405,16 @@
   <button data-tab="photos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photos</button>
 </div></nav>
 
+<div class="modal" id="arr-modal" hidden role="dialog" aria-modal="true" aria-labelledby="arr-title">
+  <div class="sheet">
+    <div class="pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+    <p class="where" id="arr-where"></p>
+    <h2 id="arr-title"></h2>
+    <p id="arr-text"></p>
+    <div class="row"><button class="btn ghost" id="arr-no" type="button">Not now</button><button class="btn" id="arr-yes" type="button">Yes</button></div>
+  </div>
+</div>
+
 <div class="lightbox" id="lightbox" hidden>
   <img id="lb-img" alt="">
   <div class="lb-bar">
@@ -413,7 +454,11 @@
   // ---------- center context ----------
   // A center page links here as /app/?center=<id>; remember it across the Google round trip.
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
-  const fromUrl = new URLSearchParams(location.search).get("center");
+  const qs = new URLSearchParams(location.search);
+  const arriveParam = qs.get("arrive") === "1";
+  if (arriveParam) { try { sessionStorage.setItem("sanora-arrive-now", "1"); } catch {} }
+  const fromUrl = qs.get("center");
+  if (arriveParam && !fromUrl) history.replaceState(null, "", location.pathname);
   if (fromUrl && /^[a-z0-9-]{1,60}$/.test(fromUrl)) { store.set("sanora-center", fromUrl); history.replaceState(null, "", location.pathname); }
   let centerId = store.get("sanora-center");   // the center whose page sent us here (or the staff member's own)
   let centerName = "";
@@ -523,7 +568,31 @@
   let isAdmin = false;
   const ROLE_LABEL = { admin: "Admin", head: "Head", teacher: "Teacher" };
   const canRemove = (r, mine) => r.email.toLowerCase() !== mine && (isAdmin || (myRole === "head" && r.role !== "admin"));
+  async function loadCenterLoc() {
+    const can = isAdmin || myRole === "head";
+    $("loc-card").hidden = !can || !centerId;
+    if (!can || !centerId) return;
+    const { data } = await sb.from("centers").select("lat,lng,radius_m").eq("id", centerId);
+    const c = data && data[0];
+    $("loc-status").textContent = c && c.lat != null
+      ? `Set. Parents with arrival reminders on get a check-in or check-out prompt within about ${c.radius_m || 150} m of the center. To change it, stand at the center and tap below.`
+      : `Not set yet. Stand at the center (for example at the front door) and tap below, so parents can get a check-in prompt when they arrive.`;
+    $("loc-set").textContent = c && c.lat != null ? "Update to my current location" : "Use my current location as the center";
+  }
+  $("loc-set").addEventListener("click", () => {
+    if (!navigator.geolocation) { say("loc-msg", "This browser can't share its location.", "err"); return; }
+    say("loc-msg", "Finding your location…");
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      const { error } = await sb.from("centers").update({ lat, lng }).eq("id", centerId);
+      if (error) { say("loc-msg", error.message, "err"); return; }
+      say("loc-msg", `Saved the center location (accurate to about ${Math.round(accuracy)} m).`);
+      loadCenterLoc();
+    }, (err) => say("loc-msg", err.code === 1 ? "Location permission was blocked. Allow location for this site in your browser settings and try again." : "Couldn't get your location. Try again outside or near a window.", "err"),
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+  });
   async function loadStaff() {
+    loadCenterLoc();
     const opts = isAdmin ? ["teacher", "head", "admin"] : myRole === "head" ? ["teacher", "head"] : ["teacher"];
     $("sf-role").innerHTML = opts.map((o) => `<option value="${o}">${o === "admin" ? "Admin (all centers)" : ROLE_LABEL[o]}</option>`).join("");
     $("sf-role-wrap").hidden = opts.length < 2;
@@ -1003,6 +1072,91 @@
     await loadParentAtt();
     $("att-time").value = nowTime(); sizeSig(); autoKind(); renderParent();
   });
+  // ---------- arrival reminders (parents) ----------
+  // While the app is open, watch the phone's location; at the center, offer one-tap check-in (or check-out after 12 noon).
+  // /app/?arrive=1 (e.g. from an iPhone Shortcuts "Arrive" automation) shows the prompt straight away.
+  let centerGeo = null, watchId = null, arrPending = null;
+  const ARR_KEY = "sanora-arrive-on";
+  const distM = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2); return 2 * R * Math.asin(Math.sqrt(x * x + Math.cos(a * r) * Math.cos(c * r) * y * y)); };
+  const nowHour = () => new Date().getHours();
+  async function setupArrival() {
+    if (!centerId) return;
+    const { data } = await sb.from("centers").select("name,lat,lng,radius_m").eq("id", centerId);
+    centerGeo = data && data[0] && data[0].lat != null ? data[0] : null;
+    if (!centerName && data && data[0]) brand(data[0].name);
+    $("arr-card").hidden = !centerGeo || !navigator.geolocation;
+    paintArrival();
+    if (centerGeo && store.get(ARR_KEY) === "1") startWatch();
+    let now = null; try { now = sessionStorage.getItem("sanora-arrive-now"); sessionStorage.removeItem("sanora-arrive-now"); } catch {}
+    if (now) maybeAsk(true);
+  }
+  function paintArrival(msg) {
+    const on = store.get(ARR_KEY) === "1";
+    $("arr-card").classList.toggle("on", on);
+    $("arr-toggle").textContent = on ? "On" : "Turn on";
+    $("arr-status").textContent = msg || (on ? `You'll get a prompt when you're at ${centerName || "the daycare"} with this app open.` : "Get a check-in or check-out prompt when you're at the daycare.");
+  }
+  $("arr-toggle").addEventListener("click", () => {
+    if (store.get(ARR_KEY) === "1") { store.set(ARR_KEY, "0"); if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; paintArrival(); return; }
+    store.set(ARR_KEY, "1"); paintArrival("Allow location when your phone asks…"); startWatch();
+  });
+  function startWatch() {
+    if (watchId != null || !navigator.geolocation || !centerGeo) return;
+    watchId = navigator.geolocation.watchPosition((pos) => {
+      paintArrival();
+      const d = distM(pos.coords.latitude, pos.coords.longitude, centerGeo.lat, centerGeo.lng);
+      if (d <= (centerGeo.radius_m || 150) + Math.min(pos.coords.accuracy || 0, 100)) maybeAsk(false);
+    }, (err) => {
+      if (err.code === 1) { store.set(ARR_KEY, "0"); watchId = null; paintArrival("Location is blocked for this site. Allow it in your browser settings, then turn this on again."); }
+    }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+  }
+  function whatToAsk() {
+    const d = today();
+    const kids = children.filter((c) => c.center_id === centerId);
+    const inNotOut = kids.filter((c) => { const r = attFor(c.id, d); return r && r.check_in && !r.check_out; });
+    const notIn = kids.filter((c) => { const r = attFor(c.id, d); return !r || !r.check_in; });
+    if (nowHour() >= 12 && inNotOut.length) return { kind: "out", kids: inNotOut };
+    if (notIn.length) return { kind: "in", kids: notIn };
+    return null;
+  }
+  const names = (ks) => ks.map((k) => k.name).join(ks.length > 2 ? ", " : " and ");
+  function maybeAsk(force) {
+    if (!$("arr-modal").hidden) return;
+    const q = whatToAsk(); if (!q) return;
+    const key = `sanora-arr-${today()}-${q.kind}`;
+    let seen = null; try { seen = sessionStorage.getItem(key) || store.get(key); } catch {}
+    if (seen && !force) return;
+    arrPending = q;
+    $("arr-where").textContent = `You're at ${centerName || "the daycare"}`;
+    $("arr-title").textContent = q.kind === "in" ? `Check in ${names(q.kids)}?` : `Check out ${names(q.kids)}?`;
+    $("arr-text").textContent = `${q.kind === "in" ? "Drop-off" : "Pick-up"} time ${fmtTime(nowTime())}, signed as ${$("att-name").value.trim() || parentName() || "you"}.`;
+    $("arr-yes").textContent = q.kind === "in" ? "Yes, check in" : "Yes, check out";
+    $("arr-modal").hidden = false;
+    if (navigator.vibrate) navigator.vibrate(120);
+  }
+  $("arr-no").addEventListener("click", () => {
+    if (arrPending) store.set(`sanora-arr-${today()}-${arrPending.kind}`, "skip");
+    $("arr-modal").hidden = true; arrPending = null;
+  });
+  $("arr-yes").addEventListener("click", async () => {
+    const q = arrPending; if (!q) return;
+    $("arr-yes").disabled = true;
+    if (!$("att-name").value.trim()) $("att-name").value = parentName() || "Parent";
+    drawSig();
+    const k = q.kind === "in" ? "check_in" : "check_out", t = nowTime(), sigImg = sigData();
+    let failed = null;
+    for (const kid of q.kids) {
+      const row = { child_id: kid.id, att_date: today(), [k]: t, [k + "_name"]: $("att-name").value.trim(), [k + "_sig"]: sigImg, [k + "_by"]: me ? me.email : null, updated_at: new Date().toISOString() };
+      const { error } = await sb.from("attendance").upsert(row, { onConflict: "child_id,att_date" });
+      if (error) failed = error;
+    }
+    $("arr-yes").disabled = false; $("arr-modal").hidden = true; arrPending = null;
+    store.set(`sanora-arr-${today()}-${q.kind}`, "done");
+    if (failed) { say("att-msg", failed.message, "err"); return; }
+    say("att-msg", `${names(q.kids)} checked ${q.kind} at ${fmtTime(t)}. The teacher can see it now.`);
+    await loadParentAtt(); autoKind(); renderParent();
+  });
+
   async function loadParentAtt() {
     const { data } = await sb.from("attendance").select("child_id,att_date,check_in,check_out,check_in_name,check_out_name").order("att_date", { ascending: false }).limit(400);
     attRows = data || [];
@@ -1128,6 +1282,7 @@
       (signed || []).forEach((x) => x.signedUrl && paUrls.set(x.path, x.signedUrl));
     }
     renderParent();
+    setupArrival();
   }
   $("pa-filter").addEventListener("change", renderParent);
   function renderParent() {
