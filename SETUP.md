@@ -34,8 +34,8 @@ from **their center's page** (it opens `/app/?center=<id>`); the Sanora home pag
 | --- | --- | --- |
 | Admin | smitha.jayathirtha@gmail.com | Everything, in every center; add heads, teachers and admins |
 | Head | pleasanton.sai@gmail.com (Smiles and Imagination) | Teacher app for their center; add **and remove** teachers and heads there |
-| Teacher | smithasantoshks@gmail.com (Smiles and Imagination) | Teacher app for their center; add teachers and children there |
-| Parent | the email on a child's record | Only their own child's day |
+| Teacher | (added by the head) | Teacher app for their center; add teachers and children there |
+| Parent | a parent email on a child's record (up to two per child) | Only their own child's day |
 
 Staff manage this from **☰ → Staff** at the top right of the teacher app. Teachers and heads only ever see
 the children, photos, notes and check-ins of their own center. The database enforces all of this.
@@ -56,7 +56,7 @@ whole class or some children. Parents see each day's activities in their child's
    A filter shows one child's photos. To share, tap photos in one child's group, or tap "Select all", then tap **Share**.
    Pick WhatsApp in the share sheet, then the parent's chat. The photos are marked **Sent**.
    - On a desktop browser that can't share files, the photos download and WhatsApp opens directly in the parent's chat.
-3. **Children**: add each child with the parent's name, WhatsApp number (including country code), email and any allergies.
+3. **Children**: add each child with the parent's name, WhatsApp number (including country code), email, an optional second parent's email, and any allergies. Both parent emails can sign in.
    Allergies show in red on the child's card and above the Daily note form for that child.
    Tap **Edit** on a child to change these details or to add an email to an existing child.
 

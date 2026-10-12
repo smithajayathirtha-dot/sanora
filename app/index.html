@@ -387,6 +387,8 @@
         <input id="k-phone" type="tel" inputmode="tel" placeholder="+1 408 555 1234" required>
         <label for="k-email">Parent's email (for parent sign-in)</label>
         <input id="k-email" type="email" inputmode="email" autocomplete="off" placeholder="parent@gmail.com" required>
+        <label for="k-email2">Second parent's email (optional)</label>
+        <input id="k-email2" type="email" inputmode="email" autocomplete="off" placeholder="other.parent@gmail.com">
         <label for="k-allergies">Allergies</label>
         <textarea id="k-allergies" rows="2" placeholder="e.g. Peanuts (EpiPen in bag), dairy. Leave empty if none."></textarea>
         <button class="btn" type="submit" id="k-submit">Add child</button>
@@ -635,7 +637,7 @@
   }
   function renderChildren() {
     $("k-list").innerHTML = children.length
-      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}${c.allergies ? `<span class="allergy">⚠ Allergies: ${esc(c.allergies)}</span>` : `<span class="mail">No known allergies</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
+      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}${c.parent2_email ? ` · ${esc(c.parent2_email)}` : ""}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}${c.allergies ? `<span class="allergy">⚠ Allergies: ${esc(c.allergies)}</span>` : `<span class="mail">No known allergies</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
       : `<div class="empty">No children yet. Add the first one below.</div>`;
     document.querySelectorAll(".child-select").forEach((sel) => {
       const keep = sel.value;
@@ -649,7 +651,7 @@
   function setKidForm(c) {
     editingId = c ? c.id : null;
     $("k-name").value = c ? c.name : ""; $("k-parent").value = c ? c.parent_name : "";
-    $("k-phone").value = c ? c.parent_phone : ""; $("k-email").value = c ? (c.parent_email || "") : ""; $("k-allergies").value = c ? (c.allergies || "") : "";
+    $("k-phone").value = c ? c.parent_phone : ""; $("k-email").value = c ? (c.parent_email || "") : ""; $("k-email2").value = c ? (c.parent2_email || "") : ""; $("k-allergies").value = c ? (c.allergies || "") : "";
     $("k-form-title").textContent = c ? `Edit ${c.name}` : "Add a child";
     $("k-submit").textContent = c ? "Save changes" : "Add child";
     $("k-cancel").hidden = !c;
@@ -667,12 +669,15 @@
     if (digits.length < 8) { say("k-msg", "Enter the full WhatsApp number with country code.", "err"); return; }
     const email = $("k-email").value.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("k-msg", "Enter a valid parent email.", "err"); return; }
-    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email, allergies: $("k-allergies").value.trim() || null };
+    const email2 = $("k-email2").value.trim().toLowerCase();
+    if (email2 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email2)) { say("k-msg", "Enter a valid second parent email, or leave it empty.", "err"); return; }
+    if (email2 && email2 === email) { say("k-msg", "The second parent's email is the same as the first.", "err"); return; }
+    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email, parent2_email: email2 || null, allergies: $("k-allergies").value.trim() || null };
     const { error } = editingId
       ? await sb.from("children").update(row).eq("id", editingId)
       : await sb.from("children").insert(Object.assign({ center_id: centerId }, row));
     if (error) { say("k-msg", error.message, "err"); return; }
-    say("k-msg", editingId ? `${row.name} updated.` : `${row.name} added. ${row.parent_name} can now sign in with ${email}.`);
+    say("k-msg", editingId ? `${row.name} updated.` : `${row.name} added. Parents can now sign in with ${email}${email2 ? " or " + email2 : ""}.`);
     setKidForm(null);
     await loadChildren();
   });

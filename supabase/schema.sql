@@ -42,8 +42,7 @@ alter table public.staff add constraint staff_center_check check (role = 'admin'
 
 insert into public.staff (email, role, center_id) values
   ('smitha.jayathirtha@gmail.com', 'admin',   null),
-  ('pleasanton.sai@gmail.com',     'head',    'smiles-and-imagination'),
-  ('smithasantoshks@gmail.com',    'teacher', 'smiles-and-imagination')
+  ('pleasanton.sai@gmail.com',     'head',    'smiles-and-imagination')
 on conflict (email) do update set role = excluded.role, center_id = excluded.center_id;
 
 -- Children and their parent's contact
@@ -56,6 +55,7 @@ create table if not exists public.children (
   created_at    timestamptz not null default now()
 );
 alter table public.children add column if not exists parent_email text;
+alter table public.children add column if not exists parent2_email text;  -- optional second parent who can also sign in
 alter table public.children add column if not exists allergies text;    -- free text; empty = none known
 alter table public.children add column if not exists center_id text references public.centers(id) on delete cascade;
 update public.children set center_id = 'smiles-and-imagination' where center_id is null;
@@ -173,12 +173,17 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
--- Parents: a signed-in user whose email matches a child's parent_email
+-- Parents: a signed-in user whose email matches a child's parent_email or parent2_email
+create or replace function public.is_my_email(e1 text, e2 text)
+returns boolean language sql stable as $$
+  select public.my_email() <> '' and public.my_email() in (lower(coalesce(e1, '')), lower(coalesce(e2, '')));
+$$;
+
 create or replace function public.is_parent_of(child uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from public.children c
-    where c.id = child and c.parent_email is not null and lower(c.parent_email) = public.my_email()
+    where c.id = child and public.is_my_email(c.parent_email, c.parent2_email)
   );
 $$;
 
@@ -187,7 +192,7 @@ create or replace function public.can_parent_see_activity(center text, kids uuid
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from public.children c
-    where c.parent_email is not null and lower(c.parent_email) = public.my_email()
+    where public.is_my_email(c.parent_email, c.parent2_email)
       and c.center_id = center and (kids is null or c.id = any(kids))
   );
 $$;
@@ -197,7 +202,7 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (
     select 1 from public.children c
     where c.id::text = split_part(object_name, '/', 1)
-      and c.parent_email is not null and lower(c.parent_email) = public.my_email()
+      and public.is_my_email(c.parent_email, c.parent2_email)
   );
 $$;
 
@@ -208,7 +213,7 @@ returns text language sql stable security definer set search_path = public as $$
     public.my_staff_role(),
     case when exists (
       select 1 from public.children c
-      where c.parent_email is not null and lower(c.parent_email) = public.my_email()
+      where public.is_my_email(c.parent_email, c.parent2_email)
     ) then 'parent' end
   );
 $$;
@@ -227,7 +232,7 @@ grant execute on function
   public.my_email(), public.is_staff(), public.is_admin(), public.my_staff_role(), public.my_center(),
   public.can_staff_center(text), public.can_staff_child(uuid), public.can_staff_path(text),
   public.is_parent_of(uuid), public.is_parent_of_path(text), public.my_role(), public.my_profile(),
-  public.can_parent_see_activity(text, uuid[])
+  public.can_parent_see_activity(text, uuid[]), public.is_my_email(text, text)
 to authenticated;
 
 -- ===============================================================
@@ -285,7 +290,7 @@ create policy "staff all children" on public.children
   for all to authenticated using (public.can_staff_center(center_id)) with check (public.can_staff_center(center_id));
 drop policy if exists "parent read own children" on public.children;
 create policy "parent read own children" on public.children
-  for select to authenticated using (parent_email is not null and lower(parent_email) = public.my_email());
+  for select to authenticated using (public.is_my_email(parent_email, parent2_email));
 
 drop policy if exists "staff all photos" on public.photos;
 create policy "staff all photos" on public.photos
