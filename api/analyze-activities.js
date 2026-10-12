@@ -19,7 +19,9 @@ const ANTHROPIC_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 const MAX_PHOTOS = 20;
 // Tolerate a key pasted with spaces, a line break or surrounding quotes
-const API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim().replace(/^["']|["']$/g, "").trim();
+const RAW_KEY = (process.env.ANTHROPIC_API_KEY || "").trim().replace(/^["']|["']$/g, "").trim();
+// If extra text was pasted around the key (e.g. "Use this key: sk-ant-..."), pick out the key itself
+const API_KEY = (RAW_KEY.match(/sk-ant-[A-Za-z0-9_-]+/) || [RAW_KEY])[0];
 
 // The same categories teachers pick from in the Activities tab, with what counts as each
 const CATEGORIES = [
