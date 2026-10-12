@@ -1105,14 +1105,18 @@
   const ARR_KEY = "sanora-arrive-on";
   const distM = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2); return 2 * R * Math.asin(Math.sqrt(x * x + Math.cos(a * r) * Math.cos(c * r) * y * y)); };
   const nowHour = () => new Date().getHours();
+  let lastDist = null, lastAcc = null;
   async function setupArrival() {
     if (!centerId) return;
-    const { data } = await sb.from("centers").select("name,lat,lng,radius_m").eq("id", centerId);
+    const { data, error } = await sb.from("centers").select("name,lat,lng,radius_m").eq("id", centerId);
     centerGeo = data && data[0] && data[0].lat != null ? data[0] : null;
     if (!centerName && data && data[0]) brand(data[0].name);
-    $("arr-card").hidden = !centerGeo || !navigator.geolocation;
+    $("arr-card").hidden = !navigator.geolocation;
+    if (error) { paintArrival("Arrival reminders aren't set up on the server yet (the center location fields are missing)."); return; }
+    if (!centerGeo) { paintArrival(`${centerName || "Your daycare"} hasn't set its location yet, so reminders can't work. Ask the head to set it in Staff → Center location.`); $("arr-toggle").hidden = true; return; }
+    $("arr-toggle").hidden = false;
     paintArrival();
-    if (centerGeo && store.get(ARR_KEY) === "1") startWatch();
+    if (store.get(ARR_KEY) === "1") { startWatch(); checkNow(); }
     let now = null; try { now = sessionStorage.getItem("sanora-arrive-now"); sessionStorage.removeItem("sanora-arrive-now"); } catch {}
     if (now) maybeAsk(true);
   }
@@ -1120,22 +1124,41 @@
     const on = store.get(ARR_KEY) === "1";
     $("arr-card").classList.toggle("on", on);
     $("arr-toggle").textContent = on ? "On" : "Turn on";
-    $("arr-status").textContent = msg || (on ? `You'll get a prompt when you're at ${centerName || "the daycare"} with this app open.` : "Get a check-in or check-out prompt when you're at the daycare.");
+    if (msg) { $("arr-status").textContent = msg; return; }
+    if (!on) { $("arr-status").textContent = "Get a check-in or check-out prompt when you're at the daycare."; return; }
+    const where = centerName || "the daycare";
+    if (lastDist == null) { $("arr-status").textContent = `On. Finding your location…`; return; }
+    const r = (centerGeo.radius_m || 150) + Math.min(lastAcc || 0, 100);
+    const far = lastDist >= 1000 ? `${(lastDist / 1000).toFixed(1)} km` : `${Math.round(lastDist)} m`;
+    const q = whatToAsk();
+    $("arr-status").textContent = lastDist <= r
+      ? `You're at ${where}. ${q ? "" : "Nothing to check in or out right now."}`.trim()
+      : `On · you're ${far} from ${where}. The prompt appears within ${Math.round(r)} m.`;
   }
   $("arr-toggle").addEventListener("click", () => {
-    if (store.get(ARR_KEY) === "1") { store.set(ARR_KEY, "0"); if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; paintArrival(); return; }
-    store.set(ARR_KEY, "1"); paintArrival("Allow location when your phone asks…"); startWatch();
+    if (store.get(ARR_KEY) === "1") { store.set(ARR_KEY, "0"); if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; lastDist = null; paintArrival(); return; }
+    store.set(ARR_KEY, "1"); paintArrival("Allow location when your phone asks…"); startWatch(); checkNow();
   });
+  function onPos(pos) {
+    lastDist = distM(pos.coords.latitude, pos.coords.longitude, centerGeo.lat, centerGeo.lng);
+    lastAcc = pos.coords.accuracy || 0;
+    paintArrival();
+    if (lastDist <= (centerGeo.radius_m || 150) + Math.min(lastAcc, 100)) maybeAsk(false);
+  }
+  function onPosErr(err) {
+    if (err.code === 1) { store.set(ARR_KEY, "0"); if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; paintArrival("Location is blocked for this site. On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using. Then turn this on again."); }
+    else if (lastDist == null) paintArrival("Couldn't get your location yet. Make sure Location Services is on.");
+  }
   function startWatch() {
     if (watchId != null || !navigator.geolocation || !centerGeo) return;
-    watchId = navigator.geolocation.watchPosition((pos) => {
-      paintArrival();
-      const d = distM(pos.coords.latitude, pos.coords.longitude, centerGeo.lat, centerGeo.lng);
-      if (d <= (centerGeo.radius_m || 150) + Math.min(pos.coords.accuracy || 0, 100)) maybeAsk(false);
-    }, (err) => {
-      if (err.code === 1) { store.set(ARR_KEY, "0"); watchId = null; paintArrival("Location is blocked for this site. Allow it in your browser settings, then turn this on again."); }
-    }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+    watchId = navigator.geolocation.watchPosition(onPos, onPosErr, { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 });
   }
+  // A fresh one-off reading: on open, and every time the app comes back to the screen (iPhone pauses tracking in the background)
+  function checkNow() {
+    if (!navigator.geolocation || !centerGeo || store.get(ARR_KEY) !== "1") return;
+    navigator.geolocation.getCurrentPosition(onPos, onPosErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("v-parent").hidden) { loadParentAtt().then(() => { autoKind(); checkNow(); }); } });
   function whatToAsk() {
     const d = today();
     const kids = children.filter((c) => c.center_id === centerId);
@@ -1180,7 +1203,7 @@
     store.set(`sanora-arr-${today()}-${q.kind}`, "done");
     if (failed) { say("att-msg", failed.message, "err"); return; }
     say("att-msg", `${names(q.kids)} checked ${q.kind} at ${fmtTime(t)}. The teacher can see it now.`);
-    await loadParentAtt(); autoKind(); renderParent();
+    await loadParentAtt(); autoKind(); renderParent(); paintArrival();
   });
 
   async function loadParentAtt() {
