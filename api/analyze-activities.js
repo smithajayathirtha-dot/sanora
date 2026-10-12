@@ -18,6 +18,8 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_PIYNP
 const ANTHROPIC_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com") + "/v1/messages";
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 const MAX_PHOTOS = 20;
+// Tolerate a key pasted with spaces, a line break or surrounding quotes
+const API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim().replace(/^["']|["']$/g, "").trim();
 
 // The same categories teachers pick from in the Activities tab, with what counts as each
 const CATEGORIES = [
@@ -73,7 +75,7 @@ const isDate = (d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return send(res, 405, { error: "Use POST" });
-  if (!process.env.ANTHROPIC_API_KEY) return send(res, 503, { error: "Photo recognition isn't switched on yet: ANTHROPIC_API_KEY is not set in Vercel." });
+  if (!API_KEY) return send(res, 503, { error: "Photo recognition isn't switched on yet: ANTHROPIC_API_KEY is not set in Vercel." });
   const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
   if (!token) return send(res, 401, { error: "Sign in first." });
   let body = req.body;
@@ -129,11 +131,15 @@ module.exports = async (req, res) => {
     });
     const ar = await fetch(ANTHROPIC_URL, {
       method: "POST",
-      headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      headers: { "x-api-key": API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({ model: MODEL, max_tokens: 1500, tools: [TOOL], tool_choice: { type: "tool", name: TOOL.name }, messages: [{ role: "user", content }] })
     });
     const aj = await ar.json();
-    if (!ar.ok) return send(res, 502, { error: "Photo recognition failed: " + ((aj && aj.error && aj.error.message) || ar.status) });
+    if (!ar.ok) {
+      const m = (aj && aj.error && aj.error.message) || String(ar.status);
+      const hint = ar.status === 401 ? ` (the key in Vercel starts "${API_KEY.slice(0, 7)}…" and is ${API_KEY.length} characters; a Claude API key starts "sk-ant-")` : "";
+      return send(res, 502, { error: "Photo recognition failed: " + m + hint });
+    }
     const call = (aj.content || []).find((c) => c.type === "tool_use" && c.name === TOOL.name);
     const found = (call && call.input && Array.isArray(call.input.activities)) ? call.input.activities : [];
 
