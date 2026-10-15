@@ -13,6 +13,16 @@ do $$ begin
   end if;
 end $$;
 
+-- Each kind has its own block (same as schema.sql): Circle time = circle/story/music;
+-- Hands-on activity = art/sensory/learning; Indoor / outdoor play = outdoor/other
+update public.centers c set schedule = (
+  select jsonb_agg(case
+           when b->>'title' = 'Circle time' then jsonb_set(b, '{kinds}', '["Circle time", "Story time", "Music & movement"]')
+           when b->>'title' = 'Indoor / outdoor play' then jsonb_set(b, '{kinds}', '["Outdoor play", "Other"]')
+           else b end order by ord)
+  from jsonb_array_elements(c.schedule) with ordinality t(b, ord))
+where c.id = 'smiles-and-imagination' and jsonb_typeof(c.schedule) = 'array';
+
 alter table public.children add column if not exists half_day boolean not null default false;
 
 -- Sanmay is on a half day for now (change it any time in the app: Children → Edit → Half day)
