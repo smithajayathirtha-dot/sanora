@@ -68,7 +68,8 @@ The center page has an **A typical day** section and a **Download the schedule (
 Parents also get an **A typical day ↗** link in the app. The same schedule is stored on the center (`centers.schedule`).
 
 ### Activities recognized from photos
-Activities are placed in the typical-day blocks (Circle time 9:00, Hands-on activity 10:00, Indoor/outdoor play 10:30,
+Activities are placed in the typical-day block for their kind (Circle/Story/Music → Circle time 9:00 or Mini circle 3:30;
+Art, Sensory play and Learning → Hands-on activity 10:00 or Free play 5:00; Outdoor play → 10:30 or 4:00), e.g. (Circle time 9:00, Hands-on activity 10:00, Indoor/outdoor play 10:30,
 Mini circle time 3:30, Outdoor play 4:00, Free play indoors 5:00) and get **the block's start time**, not the upload time.
 The upload time only helps tell apart look-alike blocks (morning vs afternoon outdoor play). Blocks where a teacher already
 logged an activity are skipped. Copies of one group photo are sent once, tagged with every child in it.

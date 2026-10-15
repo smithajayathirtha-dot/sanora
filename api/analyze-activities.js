@@ -60,6 +60,7 @@ function makeTool(slots) {
   };
 }
 const hm = (t) => (t ? String(t).slice(0, 5) : "");
+const mins = (t) => { const [h, m] = hm(t).split(":").map(Number); return h * 60 + m; };
 const fmt12 = (t) => { const [h, m] = hm(t).split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 
 async function sbFetch(path, token, init = {}) {
@@ -143,8 +144,9 @@ module.exports = async (req, res) => {
     ];
     if (slots.length) {
       lines.push("The center follows this typical day. Place each activity in the block it belongs to:\n" +
-        slots.map((b, i) => `${i + 1}. ${fmt12(b.start)}–${fmt12(b.end)} ${b.title}${b.details ? ": " + b.details : ""} (usual categories: ${(b.kinds || []).join(", ")})`).join("\n"));
-      lines.push("Return at most one entry per block, listing all the photos that show it. Choose the block from what the photo shows; " +
+        slots.map((b, i) => `${i + 1}. ${fmt12(b.start)}–${fmt12(b.end)} ${b.title}${b.details ? ": " + b.details : ""} (categories: ${(b.kinds || []).join(", ")})`).join("\n"));
+      lines.push("Only use a block for the categories listed with it (e.g. sensory play, art and learning go in Hands-on activity, not in play time). " +
+        "Return at most one entry per category in each block, listing all the photos that show it. Choose the block from what the photo shows; " +
         "when two blocks fit (for example outdoor play in the morning or the afternoon), pick the one that ends before the photo's upload time, since a photo can't be uploaded before it was taken.");
     } else {
       lines.push("Return at most one entry per category, listing all the photos that show it.");
@@ -188,14 +190,20 @@ module.exports = async (req, res) => {
       if (slots.length) {
         let b = slots[(Number(a.block) || 0) - 1];
         if (!b) continue;
+        // Each kind belongs in a block that lists it (e.g. Sensory play → Hands-on activity): pick the nearest such block
+        if (b.kinds && !b.kinds.includes(kind)) {
+          const fits = slots.filter((x) => (x.kinds || []).includes(kind));
+          if (fits.length) b = fits.reduce((best, x) => Math.abs(mins(x.start) - mins(b.start)) < Math.abs(mins(best.start) - mins(b.start)) ? x : best);
+        }
         // Half-day children are gone by the afternoon: move their photos' activity to the matching morning block
         const ps0 = (a.photos || []).map((n) => usable[n - 1]).filter(Boolean);
         if (hm(b.start) >= HALF_DAY_END && ps0.length && ps0.every(onlyHalfDay)) {
           const am = slots.filter((x) => hm(x.start) < HALF_DAY_END);
           b = am.find((x) => (x.kinds || []).includes(kind)) || am[am.length - 1] || b;
         }
-        if (existing.some((e) => inBlock(e.act_time, b) || (!e.act_time && (b.kinds || []).includes(e.kind) && e.kind === kind))) continue;
-        key = "b" + b.start; time = hm(b.start);
+        // a teacher already logged this kind in this block (or with no time): keep theirs
+        if (existing.some((e) => e.kind === kind && (inBlock(e.act_time, b) || !e.act_time))) continue;
+        key = "b" + b.start + "|" + kind; time = hm(b.start);
       } else {
         if (existing.some((e) => e.kind === kind)) continue;
         key = "k" + kind; time = null;
