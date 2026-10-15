@@ -36,30 +36,30 @@ const CATEGORIES = [
 ];
 const KINDS = CATEGORIES.map((c) => c[0]);
 
-const TOOL = {
-  name: "record_activities",
-  description: "Record the distinct activities the children were doing in the day's photos.",
-  input_schema: {
+// Tool definition: when the center has a typical-day schedule, each activity is placed in one of its blocks
+function makeTool(slots) {
+  const item = {
     type: "object",
     properties: {
-      activities: {
-        type: "array",
-        description: "At most one entry per category. Put every photo showing that category into that entry. Leave out categories already logged by teachers.",
-        items: {
-          type: "object",
-          properties: {
-            kind: { type: "string", enum: KINDS, description: "The category this activity belongs to. Use 'Other' only when none of the others fit." },
-            title: { type: "string", description: "Short, specific name, e.g. 'Leaf painting', 'Building block towers'. Max 6 words." },
-            details: { type: "string", description: "One warm, factual sentence for parents describing what the children did. No names, no guesses about feelings beyond what is visible." },
-            photos: { type: "array", items: { type: "integer" }, description: "Photo numbers (as labeled) that show this activity." }
-          },
-          required: ["kind", "title", "details", "photos"]
-        }
-      }
+      kind: { type: "string", enum: KINDS, description: "The category this activity belongs to. Use 'Other' only when none of the others fit." },
+      title: { type: "string", description: "Short, specific name, e.g. 'Leaf painting', 'Building block towers'. Max 6 words." },
+      details: { type: "string", description: "One warm, factual sentence for parents describing what the children did. No names, no guesses about feelings beyond what is visible." },
+      photos: { type: "array", items: { type: "integer" }, description: "Photo numbers (as labeled) that show this activity." }
     },
-    required: ["activities"]
+    required: ["kind", "title", "details", "photos"]
+  };
+  if (slots.length) {
+    item.properties.block = { type: "integer", enum: slots.map((_, i) => i + 1), description: "Number of the typical-day block this activity belongs to." };
+    item.required.push("block");
   }
-};
+  return {
+    name: "record_activities",
+    description: "Record the distinct activities the children were doing in the day's photos.",
+    input_schema: { type: "object", properties: { activities: { type: "array", description: slots.length ? "At most one entry per schedule block." : "At most one entry per category.", items: item } }, required: ["activities"] }
+  };
+}
+const hm = (t) => (t ? String(t).slice(0, 5) : "");
+const fmt12 = (t) => { const [h, m] = hm(t).split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 
 async function sbFetch(path, token, init = {}) {
   const r = await fetch(SUPABASE_URL + path, {
@@ -92,49 +92,68 @@ module.exports = async (req, res) => {
     if (!["admin", "head", "teacher"].includes(role)) return send(res, 403, { error: "Only teachers can do this." });
     if (role !== "admin" && prof.center_id !== centerId) return send(res, 403, { error: "That isn't your center." });
 
-    // 2. The center's children and that day's photos
+    // 2. The center's typical-day schedule, its children, and that day's photos
+    const centers = await sbFetch(`/rest/v1/centers?select=schedule&id=eq.${encodeURIComponent(centerId)}`, token);
+    const schedule = (centers && centers[0] && Array.isArray(centers[0].schedule)) ? centers[0].schedule : [];
+    const slots = schedule.filter((b) => b.activity);
     const kids = await sbFetch(`/rest/v1/children?select=id,name&center_id=eq.${encodeURIComponent(centerId)}`, token);
     if (!kids.length) return send(res, 200, { added: 0, activities: [], note: "No children in this center yet." });
     const nameOf = Object.fromEntries(kids.map((k) => [k.id, k.name]));
     const ids = kids.map((k) => k.id).join(",");
-    let photos = await sbFetch(`/rest/v1/photos?select=id,child_id,path,created_at&taken_on=eq.${date}&child_id=in.(${ids})&order=created_at.desc&limit=${MAX_PHOTOS}`, token);
-    photos = photos.reverse();   // oldest first, so photo numbers follow the day
-    if (!photos.length) return send(res, 200, { added: 0, activities: [], note: "No photos for this day yet." });
+    const all = await sbFetch(`/rest/v1/photos?select=id,child_id,path,created_at,group_id&taken_on=eq.${date}&child_id=in.(${ids})&order=created_at.desc&limit=200`, token);
+    // A group photo saved for several children is one picture: send it once, labeled with all of them
+    const groups = new Map();
+    for (const p of all) {
+      const key = p.group_id || p.id;
+      if (!groups.has(key)) groups.set(key, { path: p.path, created_at: p.created_at, members: [] });
+      groups.get(key).members.push(p);
+    }
+    const pics = [...groups.values()].slice(0, MAX_PHOTOS).reverse();   // newest 20, then oldest first
+    if (!pics.length) return send(res, 200, { added: 0, activities: [], note: "No photos for this day yet." });
 
     // 3. Short-lived links the model can fetch
-    const signed = await sbFetch("/storage/v1/object/sign/photos", token, { method: "POST", body: JSON.stringify({ expiresIn: 600, paths: photos.map((p) => p.path) }) });
+    const signed = await sbFetch("/storage/v1/object/sign/photos", token, { method: "POST", body: JSON.stringify({ expiresIn: 600, paths: pics.map((p) => p.path) }) });
     const urlFor = {};
-    (signed || []).forEach((s) => { if (s.signedURL && !s.error) urlFor[s.path] = SUPABASE_URL + "/storage/v1" + s.signedURL; });
-    const usable = photos.filter((p) => urlFor[p.path]);
+    (signed || []).forEach((x) => { if (x.signedURL && !x.error) urlFor[x.path] = SUPABASE_URL + "/storage/v1" + x.signedURL; });
+    const usable = pics.filter((p) => urlFor[p.path]);
     if (!usable.length) return send(res, 200, { added: 0, activities: [], note: "Couldn't open the photos." });
 
     // 4. What teachers already logged that day (kept as is; the model skips these)
-    const existing = await sbFetch(`/rest/v1/activities?select=kind,title,details,source&center_id=eq.${encodeURIComponent(centerId)}&act_date=eq.${date}&source=neq.ai`, token);
+    const existing = await sbFetch(`/rest/v1/activities?select=kind,title,details,act_time,source&center_id=eq.${encodeURIComponent(centerId)}&act_date=eq.${date}&source=neq.ai`, token);
 
     // 5. Ask Claude
+    const localTime = (iso) => { const d = new Date(Date.parse(iso) - (Number(tz) || 0) * 60000); return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`; };
     const content = [];
     usable.forEach((p, i) => {
-      content.push({ type: "text", text: `Photo ${i + 1} (child: ${nameOf[p.child_id] || "unknown"})` });
+      const who = [...new Set(p.members.map((m) => nameOf[m.child_id]).filter(Boolean))].join(", ") || "unknown";
+      content.push({ type: "text", text: `Photo ${i + 1} (children: ${who}; uploaded at ${fmt12(localTime(p.created_at))})` });
       content.push({ type: "image", source: { type: "url", url: urlFor[p.path] } });
     });
-    content.push({
-      type: "text",
-      text: [
-        `These are photos from one day (${date}) at a small home daycare and preschool for children aged 10 months to 5 years.`,
-        "Check every photo against each of these activity categories:\n" + CATEGORIES.map(([k, d]) => `- ${k}: ${d}`).join("\n"),
-        "Return at most one entry per category, listing all the photos that show it. If one photo clearly shows two categories, it may appear in both.",
-        "Ignore photos that don't show a clear activity (e.g. just a portrait, a nap or a meal). Use 'Other' only when nothing else fits.",
-        existing.length
-          ? "Teachers already logged these activities today. Do NOT return entries for these categories:\n" + existing.map((a) => `- ${a.kind}: ${a.title || a.kind}${a.details ? " (" + a.details + ")" : ""}`).join("\n")
-          : "Teachers haven't logged any activities today.",
-        "Describe only what is visible. Never mention children's names or appearance in the title or details. If there is nothing new, return an empty list.",
-        "Call the record_activities tool with the result. If you can't use the tool, reply with only JSON in the form {\"activities\": [...]}."
-      ].join("\n\n")
-    });
+    const tool = makeTool(slots);
+    const lines = [
+      `These are photos from one day (${date}) at a small home daycare and preschool for children aged 10 months to 5 years.`,
+      "Activity categories:\n" + CATEGORIES.map(([k, d]) => `- ${k}: ${d}`).join("\n")
+    ];
+    if (slots.length) {
+      lines.push("The center follows this typical day. Place each activity in the block it belongs to:\n" +
+        slots.map((b, i) => `${i + 1}. ${fmt12(b.start)}–${fmt12(b.end)} ${b.title}${b.details ? ": " + b.details : ""} (usual categories: ${(b.kinds || []).join(", ")})`).join("\n"));
+      lines.push("Return at most one entry per block, listing all the photos that show it. Choose the block from what the photo shows; " +
+        "when two blocks fit (for example outdoor play in the morning or the afternoon), pick the one that ends before the photo's upload time, since a photo can't be uploaded before it was taken.");
+    } else {
+      lines.push("Return at most one entry per category, listing all the photos that show it.");
+    }
+    lines.push("Ignore photos that don't show a clear activity (e.g. just a portrait, arrival, a nap, a snack or a meal). Use 'Other' only when nothing else fits.");
+    lines.push(existing.length
+      ? "Teachers already logged these activities today. Do NOT return entries for them:\n" + existing.map((a) => `- ${a.act_time ? fmt12(a.act_time) + " " : ""}${a.kind}: ${a.title || a.kind}${a.details ? " (" + a.details + ")" : ""}`).join("\n")
+      : "Teachers haven't logged any activities today.");
+    lines.push("Describe only what is visible. Never mention children's names or appearance in the title or details. If there is nothing new, return an empty list.");
+    lines.push("Call the record_activities tool with the result. If you can't use the tool, reply with only JSON in the form {\"activities\": [...]}.");
+    content.push({ type: "text", text: lines.join("\n\n") });
+
     const ar = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: { "x-api-key": API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1500, tools: [TOOL], tool_choice: { type: "auto" }, messages: [{ role: "user", content }] })
+      body: JSON.stringify({ model: MODEL, max_tokens: 1500, tools: [tool], tool_choice: { type: "auto" }, messages: [{ role: "user", content }] })
     });
     const aj = await ar.json();
     if (!ar.ok) {
@@ -143,7 +162,7 @@ module.exports = async (req, res) => {
       return send(res, 502, { error: "Photo recognition failed: " + m + hint });
     }
     // Prefer the tool call; fall back to JSON in a text reply
-    const call = (aj.content || []).find((c) => c.type === "tool_use" && c.name === TOOL.name);
+    const call = (aj.content || []).find((c) => c.type === "tool_use" && c.name === tool.name);
     let found = (call && call.input && Array.isArray(call.input.activities)) ? call.input.activities : null;
     if (!found) {
       const text = (aj.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n");
@@ -151,29 +170,39 @@ module.exports = async (req, res) => {
       try { const parsed = m ? JSON.parse(m[0]) : null; found = parsed && Array.isArray(parsed.activities) ? parsed.activities : []; } catch { found = []; }
     }
 
-    // 6. Turn the result into activity rows: one per category, never a category a teacher already logged
-    const taken = new Set(existing.map((a) => a.kind));
-    const byKind = new Map();
+    // 6. Turn the result into activity rows.
+    //    With a schedule: one per block, timed at the block's start; skip blocks a teacher already logged an activity in.
+    //    Without one: one per category, timed by the first photo's upload; skip categories a teacher already logged.
+    const inBlock = (t, b) => t && hm(t) >= hm(b.start) && hm(t) < hm(b.end);
+    const merged = new Map();
     for (const a of found) {
       const kind = KINDS.includes(a.kind) ? a.kind : "Other";
-      if (taken.has(kind)) continue;
-      if (!byKind.has(kind)) byKind.set(kind, { ...a, kind, photos: [] });
-      const m = byKind.get(kind); m.photos = [...new Set([...m.photos, ...(a.photos || [])])];
+      let key, time;
+      if (slots.length) {
+        const b = slots[(Number(a.block) || 0) - 1];
+        if (!b) continue;
+        if (existing.some((e) => inBlock(e.act_time, b) || (!e.act_time && (b.kinds || []).includes(e.kind) && e.kind === kind))) continue;
+        key = "b" + b.start; time = hm(b.start);
+      } else {
+        if (existing.some((e) => e.kind === kind)) continue;
+        key = "k" + kind; time = null;
+      }
+      if (!merged.has(key)) merged.set(key, { ...a, kind, time, photos: [] });
+      const m = merged.get(key); m.photos = [...new Set([...m.photos, ...(a.photos || [])])];
     }
     const rows = [];
-    for (const a of byKind.values()) {
+    for (const a of merged.values()) {
       const ps = (a.photos || []).map((n) => usable[n - 1]).filter(Boolean);
       if (!ps.length) continue;
-      const first = ps.reduce((m, p) => (p.created_at < m ? p.created_at : m), ps[0].created_at);
-      const local = new Date(Date.parse(first) - (Number(tz) || 0) * 60000);   // tz_offset_min = Date.getTimezoneOffset()
-      const hhmm = `${String(local.getUTCHours()).padStart(2, "0")}:${String(local.getUTCMinutes()).padStart(2, "0")}`;
+      const members = ps.flatMap((p) => p.members);
+      const time = a.time || localTime(ps.reduce((m, p) => (p.created_at < m ? p.created_at : m), ps[0].created_at));
       rows.push({
-        center_id: centerId, act_date: date, act_time: hhmm,
-        kind: KINDS.includes(a.kind) ? a.kind : "Other",
+        center_id: centerId, act_date: date, act_time: time,
+        kind: a.kind,
         title: String(a.title || "").slice(0, 80) || null,
         details: String(a.details || "").slice(0, 400) || null,
-        child_ids: [...new Set(ps.map((p) => p.child_id))],
-        photo_ids: ps.map((p) => p.id),
+        child_ids: [...new Set(members.map((m) => m.child_id))],
+        photo_ids: members.map((m) => m.id),
         source: "ai", created_by: "Recognized from photos"
       });
     }
@@ -182,7 +211,7 @@ module.exports = async (req, res) => {
     await sbFetch(`/rest/v1/activities?center_id=eq.${encodeURIComponent(centerId)}&act_date=eq.${date}&source=eq.ai`, token, { method: "DELETE" });
     if (rows.length) await sbFetch("/rest/v1/activities", token, { method: "POST", body: JSON.stringify(rows), headers: { Prefer: "return=minimal" } });
 
-    return send(res, 200, { added: rows.length, photos: usable.length, activities: rows.map((r) => ({ kind: r.kind, title: r.title, children: r.child_ids.map((id) => nameOf[id]) })) });
+    return send(res, 200, { added: rows.length, photos: usable.length, activities: rows.map((r) => ({ kind: r.kind, title: r.title, time: r.act_time, children: r.child_ids.map((id) => nameOf[id]) })) });
   } catch (e) {
     return send(res, e.status === 401 ? 401 : 500, { error: e.message || "Something went wrong." });
   }

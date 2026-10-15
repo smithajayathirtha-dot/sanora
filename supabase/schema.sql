@@ -16,10 +16,17 @@ create table if not exists public.centers (
 alter table public.centers add column if not exists lat double precision;
 alter table public.centers add column if not exists lng double precision;
 alter table public.centers add column if not exists radius_m int not null default 150;
+-- The center's typical day: photo-recognized activities are placed in these blocks, at the block's start time
+alter table public.centers add column if not exists schedule jsonb;
+alter table public.centers add column if not exists schedule_pdf text;
 
 insert into public.centers (id, name) values
   ('smiles-and-imagination', 'Smiles and Imagination')
 on conflict (id) do update set name = excluded.name;
+update public.centers set
+  schedule_pdf = '/smiles-and-imagination/typical-day.pdf',
+  schedule = '[{"start": "08:15", "end": "09:00", "title": "Arrival", "activity": false}, {"start": "09:00", "end": "09:30", "title": "Circle time", "details": "Songs, stories, language, math, practical life, science experiments, and group learning together.", "activity": true, "kinds": ["Circle time", "Story time", "Music & movement", "Learning"]}, {"start": "09:30", "end": "10:00", "title": "Snack time", "activity": false}, {"start": "10:00", "end": "10:30", "title": "Hands-on activity", "details": "Art, sensory play, or structured learning.", "activity": true, "kinds": ["Art & craft", "Sensory play", "Learning"]}, {"start": "10:30", "end": "11:30", "title": "Indoor / outdoor play", "details": "Fresh air, movement, and exploration.", "activity": true, "kinds": ["Outdoor play", "Learning", "Sensory play", "Other"]}, {"start": "11:30", "end": "11:45", "title": "Diaper changes, handwashing, and getting ready for lunch", "activity": false}, {"start": "11:45", "end": "12:45", "title": "Lunchtime", "activity": false}, {"start": "12:45", "end": "14:30", "title": "Naptime", "activity": false}, {"start": "14:30", "end": "15:00", "title": "Diaper changes and a gentle wake-up routine", "activity": false}, {"start": "15:00", "end": "15:30", "title": "Afternoon snack time", "activity": false}, {"start": "15:30", "end": "16:00", "title": "Mini circle time", "details": "Books, yoga, music and movement, show and tell, or a fun group activity.", "activity": true, "kinds": ["Story time", "Music & movement", "Circle time", "Other"]}, {"start": "16:00", "end": "17:00", "title": "Outdoor play", "details": "Active time, games, and fresh air.", "activity": true, "kinds": ["Outdoor play"]}, {"start": "17:00", "end": "17:45", "title": "Free play indoors", "details": "Children wind down as families arrive for pick-up.", "activity": true, "kinds": ["Learning", "Art & craft", "Sensory play", "Other"]}]'::jsonb
+where id = 'smiles-and-imagination';
 
 -- Staff allowlist: only these Google accounts can use the teacher app.
 --   admin   = Sanora super user: every center, every action
@@ -57,6 +64,8 @@ create table if not exists public.children (
 alter table public.children add column if not exists parent_email text;
 alter table public.children add column if not exists parent2_email text;  -- optional second parent who can also sign in
 alter table public.children add column if not exists allergies text;    -- free text; empty = none known
+alter table public.children add column if not exists profile_path text; -- storage path of the child's profile photo: <child_id>/profile/<file>.jpg
+alter table public.children add column if not exists photo_match_ok boolean not null default false; -- parent agreed to photo matching for group uploads
 alter table public.children add column if not exists center_id text references public.centers(id) on delete cascade;
 update public.children set center_id = 'smiles-and-imagination' where center_id is null;
 alter table public.children alter column center_id set default 'smiles-and-imagination';
@@ -73,6 +82,7 @@ create table if not exists public.photos (
   created_at   timestamptz not null default now()
 );
 create index if not exists photos_child_date on public.photos (child_id, taken_on);
+alter table public.photos add column if not exists group_id uuid;   -- copies of one group photo saved for several children share this
 
 -- Daily note (one per child per day): lunch, snack, bowel movement, nap, notes
 create table if not exists public.daily_notes (

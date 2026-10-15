@@ -90,6 +90,20 @@
   @keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
   @media (prefers-reduced-motion:reduce){.modal,.modal .sheet{animation:none}}
   .kids-pick{margin-top:10px}
+  .day-link{display:inline-block;margin-left:6px;color:var(--leaf);font-weight:700;text-decoration:none}
+  .g-card{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .g-card:first-child{border-top:0}
+  .g-card img{width:96px;height:96px;object-fit:cover;border-radius:12px;background:var(--leaf-soft)}
+  .g-card .faces{font-size:.8rem;color:var(--muted);margin-bottom:6px}
+  .g-card .seg button{flex:0 0 auto;padding:6px 10px;font-size:.84rem}
+  .g-card .seg button.auto::after{content:" ✓";font-weight:800}
+  .g-card.none .faces{color:var(--danger)}
+  .pp-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .pp{width:56px;height:56px;border-radius:50%;background:var(--petal-soft) center/cover no-repeat;flex:none;display:grid;place-items:center;color:#c25570;font-weight:700}
+  .consent{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.88rem;color:var(--muted);margin-top:16px;line-height:1.4}
+  .consent input{width:20px;height:20px;flex:none;margin-top:1px;accent-color:var(--leaf)}
+  .avatar.photo{background:center/cover no-repeat;color:transparent}
+  .kid .match{display:block;color:var(--leaf);font-size:.8rem;font-weight:700}
   .msg-item{padding:12px 0;border-top:1px solid var(--line)}
   .msg-item:first-child{border-top:0;padding-top:4px}
   .msg-item .meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:.82rem;margin-bottom:4px}
@@ -292,9 +306,10 @@
   <!-- Upload -->
   <section id="v-upload" hidden>
     <h1>Upload photos</h1>
-    <p class="hint">Photos are saved under the child and the date.</p>
+    <div class="seg" id="u-mode" style="margin-bottom:6px"><button type="button" data-v="one" class="on">One child</button><button type="button" data-v="group">Group photos</button></div>
+    <p class="hint" id="u-hint">Photos are saved under the child and the date.</p>
     <div class="row">
-      <div><label for="u-child">Child</label><select id="u-child" class="child-select"></select></div>
+      <div id="u-child-wrap"><label for="u-child">Child</label><select id="u-child" class="child-select"></select></div>
       <div><label for="u-date">Date</label><input id="u-date" type="date"></div>
     </div>
     <label for="u-files" class="drop" style="margin-top:16px">
@@ -304,6 +319,8 @@
     </label>
     <input id="u-files" type="file" accept="image/*" multiple hidden>
     <div class="thumbs" id="u-preview"></div>
+    <div id="g-status" class="hint" style="margin-top:12px" hidden></div>
+    <div id="g-review"></div>
     <button class="btn" id="u-go" disabled>Upload</button>
     <div class="progress" id="u-prog" hidden><i></i></div>
     <div id="u-msg"></div>
@@ -350,7 +367,7 @@
   <!-- Parent view -->
   <section id="v-parent" hidden>
     <h1 id="pa-title">Your child's photos</h1>
-    <p class="hint">Daily notes and photos from your child's teachers. Tap a photo to see it full size or save it.</p>
+    <p class="hint">Daily notes and photos from your child's teachers. Tap a photo to see it full size or save it.<a id="pa-day" class="day-link" target="_blank" rel="noopener" hidden>A typical day ↗</a></p>
     <div class="card pm-card" id="pm-card" hidden>
       <div class="pm-head"><h2 class="ftitle">Messages</h2><span class="pm-new" id="pm-new" hidden></span></div>
       <div id="pm-list"></div>
@@ -442,6 +459,14 @@
         <input id="k-email2" type="email" inputmode="email" autocomplete="off" placeholder="other.parent@gmail.com">
         <label for="k-allergies">Allergies</label>
         <textarea id="k-allergies" rows="2" placeholder="e.g. Peanuts (EpiPen in bag), dairy. Leave empty if none."></textarea>
+        <label>Profile photo</label>
+        <div class="pp-row">
+          <div class="pp" id="k-pp" aria-hidden="true"></div>
+          <label for="k-photo" class="btn ghost small" style="margin:0">Choose photo</label>
+          <input id="k-photo" type="file" accept="image/*" hidden>
+          <span class="hint" id="k-photo-note" style="margin:0">A clear, front-facing photo of the child's face.</span>
+        </div>
+        <label class="consent"><input type="checkbox" id="k-consent"> <span>Parent agreed to <b>photo matching</b>: group photos are matched to this child's profile photo on the teacher's phone, so they land in this child's day. No face data is stored.</span></label>
         <button class="btn" type="submit" id="k-submit">Add child</button>
         <button class="btn ghost" type="button" id="k-cancel" hidden>Cancel</button>
       </form>
@@ -681,15 +706,22 @@
   });
 
   // ---------- children ----------
+  let ppUrls = {};
   async function loadChildren() {
     const { data, error } = await sb.from("children").select("*").order("name");
     if (error) { say("k-msg", error.message, "err"); return; }
     children = data || [];
     renderChildren();
+    const withPhoto = children.filter((c) => c.profile_path);
+    if (withPhoto.length) {
+      const { data: signed } = await sb.storage.from("photos").createSignedUrls(withPhoto.map((c) => c.profile_path), 3600);
+      ppUrls = {}; (signed || []).forEach((x) => { const c = withPhoto.find((k) => k.profile_path === x.path); if (c && x.signedUrl) ppUrls[c.id] = x.signedUrl; });
+      renderChildren();
+    }
   }
   function renderChildren() {
     $("k-list").innerHTML = children.length
-      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar">${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}${c.parent2_email ? ` · ${esc(c.parent2_email)}` : ""}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}${c.allergies ? `<span class="allergy">⚠ Allergies: ${esc(c.allergies)}</span>` : `<span class="mail">No known allergies</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
+      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar${ppUrls[c.id] ? " photo" : ""}"${ppUrls[c.id] ? ` style="background-image:url('${esc(ppUrls[c.id])}')"` : ""}>${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b>${c.photo_match_ok && c.profile_path ? `<span class="match">✓ Photo matching on</span>` : ""}<span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}${c.parent2_email ? ` · ${esc(c.parent2_email)}` : ""}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}${c.allergies ? `<span class="allergy">⚠ Allergies: ${esc(c.allergies)}</span>` : `<span class="mail">No known allergies</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
       : `<div class="empty">No children yet. Add the first one below.</div>`;
     document.querySelectorAll(".child-select").forEach((sel) => {
       const keep = sel.value;
@@ -699,11 +731,23 @@
     renderFilter();
     updateUploadBtn();
   }
-  let editingId = null;
+  let editingId = null, ppFile = null;
+  function paintPp(url, name) {
+    $("k-pp").style.backgroundImage = url ? `url('${url}')` : "";
+    $("k-pp").textContent = url ? "" : (name ? name[0].toUpperCase() : "");
+    $("k-photo-note").textContent = url ? "Tap Choose photo to replace it." : "A clear, front-facing photo of the child's face.";
+  }
+  $("k-photo").addEventListener("change", (e) => {
+    ppFile = (e.target.files || [])[0] || null;
+    if (ppFile) { paintPp(URL.createObjectURL(ppFile)); $("k-photo-note").textContent = "New photo will be saved with the child."; }
+  });
   function setKidForm(c) {
     editingId = c ? c.id : null;
     $("k-name").value = c ? c.name : ""; $("k-parent").value = c ? c.parent_name : "";
     $("k-phone").value = c ? c.parent_phone : ""; $("k-email").value = c ? (c.parent_email || "") : ""; $("k-email2").value = c ? (c.parent2_email || "") : ""; $("k-allergies").value = c ? (c.allergies || "") : "";
+    $("k-consent").checked = !!(c && c.photo_match_ok);
+    ppFile = null; $("k-photo").value = "";
+    paintPp(c && ppUrls[c.id] ? ppUrls[c.id] : null, c ? c.name : "");
     $("k-form-title").textContent = c ? `Edit ${c.name}` : "Add a child";
     $("k-submit").textContent = c ? "Save changes" : "Add child";
     $("k-cancel").hidden = !c;
@@ -724,10 +768,23 @@
     const email2 = $("k-email2").value.trim().toLowerCase();
     if (email2 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email2)) { say("k-msg", "Enter a valid second parent email, or leave it empty.", "err"); return; }
     if (email2 && email2 === email) { say("k-msg", "The second parent's email is the same as the first.", "err"); return; }
-    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email, parent2_email: email2 || null, allergies: $("k-allergies").value.trim() || null };
-    const { error } = editingId
-      ? await sb.from("children").update(row).eq("id", editingId)
-      : await sb.from("children").insert(Object.assign({ center_id: centerId }, row));
+    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email, parent2_email: email2 || null, allergies: $("k-allergies").value.trim() || null, photo_match_ok: $("k-consent").checked };
+    const kidId = editingId || uuid();
+    if (ppFile) {
+      const blob = await shrink(ppFile, 800);
+      const path = `${kidId}/profile/${uuid()}.jpg`;
+      if (!editingId) {
+        // the child must exist before its folder can be written to
+        const ins = await sb.from("children").insert(Object.assign({ id: kidId, center_id: centerId }, row));
+        if (ins.error) { say("k-msg", ins.error.message, "err"); return; }
+      }
+      const up = await sb.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
+      if (up.error) { say("k-msg", "Couldn't save the profile photo: " + up.error.message, "err"); return; }
+      row.profile_path = path;
+    }
+    const { error } = (editingId || ppFile)
+      ? await sb.from("children").update(row).eq("id", kidId)
+      : await sb.from("children").insert(Object.assign({ id: kidId, center_id: centerId }, row));
     if (error) { say("k-msg", error.message, "err"); return; }
     say("k-msg", editingId ? `${row.name} updated.` : `${row.name} added. Parents can now sign in with ${email}${email2 ? " or " + email2 : ""}.`);
     setKidForm(null);
@@ -738,12 +795,116 @@
   let picked = [];
   $("u-files").addEventListener("change", (e) => {
     picked = Array.from(e.target.files || []);
+    if (uMode === "group") {
+      $("u-preview").innerHTML = ""; $("u-count").textContent = picked.length ? `${picked.length} photo${picked.length > 1 ? "s" : ""} added` : "You can pick several at once";
+      say("u-msg", ""); matchGroup(picked); return;
+    }
     $("u-preview").innerHTML = picked.map((f) => `<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""></div>`).join("");
     $("u-count").textContent = picked.length ? `${picked.length} photo${picked.length > 1 ? "s" : ""} ready` : "You can pick several at once";
     say("u-msg", "");
     updateUploadBtn();
   });
+  // ---------- group upload: match faces to children's profile photos, on this device ----------
+  let uMode = "one", gItems = [];   // gItems: { file, url, kids:Set, auto:Set, faces }
+  const FACE_LIB = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js";
+  const FACE_MODELS = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model/";
+  const MATCH_MAX = 0.55;   // lower = stricter; children's faces are harder, so the teacher always reviews
+  let faceReady = null;
+  function loadFaceApi() {
+    if (faceReady) return faceReady;
+    faceReady = new Promise((ok, fail) => {
+      const sc = document.createElement("script"); sc.src = FACE_LIB; sc.onload = ok; sc.onerror = () => fail(new Error("Couldn't load face matching."));
+      document.head.appendChild(sc);
+    }).then(async () => {
+      // Use the phone's GPU when available, otherwise plain CPU
+      let ok = false; try { ok = await faceapi.tf.setBackend("webgl"); } catch {}
+      if (!ok) await faceapi.tf.setBackend("cpu");
+      await faceapi.tf.ready();
+    }).then(() => Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_MODELS),
+      faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODELS),
+      faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODELS)
+    ])).catch((e) => { faceReady = null; throw e; });
+    return faceReady;
+  }
+  const loadImg = (src) => new Promise((ok, fail) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => ok(im); im.onerror = fail; im.src = src; });
+  async function profileDescriptors() {
+    const kids = children.filter((c) => c.photo_match_ok && c.profile_path);
+    if (!kids.length) return [];
+    const { data: signed } = await sb.storage.from("photos").createSignedUrls(kids.map((c) => c.profile_path), 600);
+    const out = [];
+    for (const c of kids) {
+      const u = (signed || []).find((x) => x.path === c.profile_path);
+      if (!u || !u.signedUrl) continue;
+      try {
+        const im = await loadImg(u.signedUrl);
+        const d = await faceapi.detectSingleFace(im).withFaceLandmarks().withFaceDescriptor();
+        if (d) out.push({ id: c.id, desc: d.descriptor });
+      } catch {}
+    }
+    return out;
+  }
+  function setMode(m) {
+    uMode = m;
+    $("u-mode").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === m));
+    $("u-child-wrap").hidden = m === "group";
+    $("u-hint").textContent = m === "group"
+      ? "Add photos of several children at once. Faces are matched on this phone to children with a profile photo and photo matching turned on; check the names before saving."
+      : "Photos are saved under the child and the date.";
+    picked = []; gItems = []; $("u-files").value = ""; $("u-preview").innerHTML = ""; $("g-review").innerHTML = ""; $("g-status").hidden = true;
+    $("u-count").textContent = "You can pick several at once"; say("u-msg", ""); updateUploadBtn();
+  }
+  $("u-mode").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setMode(b.dataset.v); });
+  async function matchGroup(files) {
+    gItems = files.map((f) => ({ file: f, url: URL.createObjectURL(f), kids: new Set(), auto: new Set(), faces: null }));
+    renderGroup();
+    const status = (t) => { $("g-status").hidden = false; $("g-status").textContent = t; };
+    const consented = children.filter((c) => c.photo_match_ok && c.profile_path).length;
+    if (!consented) { status("No children have photo matching turned on yet (Children → Edit → profile photo + consent). Pick the children for each photo below."); updateUploadBtn(); return; }
+    try {
+      status("Getting face matching ready… (the first time downloads about 12 MB)");
+      await loadFaceApi();
+      status("Reading profile photos…");
+      const refs = await profileDescriptors();
+      if (!refs.length) { status("Couldn't find a face in the profile photos. Pick the children for each photo below."); updateUploadBtn(); return; }
+      for (let i = 0; i < gItems.length; i++) {
+        status(`Matching faces… ${i + 1} of ${gItems.length}`);
+        const it = gItems[i];
+        const im = await loadImg(it.url);
+        const faces = await faceapi.detectAllFaces(im).withFaceLandmarks().withFaceDescriptors();
+        it.faces = faces.length;
+        for (const f of faces) {
+          let best = null, bestD = Infinity;
+          for (const r of refs) { const d = faceapi.euclideanDistance(f.descriptor, r.desc); if (d < bestD) { bestD = d; best = r.id; } }
+          if (best && bestD <= MATCH_MAX) { it.kids.add(best); it.auto.add(best); }
+        }
+        renderGroup();
+      }
+      const matched = gItems.filter((g) => g.kids.size).length;
+      status(`Matched ${matched} of ${gItems.length} photo${gItems.length > 1 ? "s" : ""}. Check the names (✓ = matched), add anyone missed, then save.`);
+    } catch (e) {
+      status(`${e.message || "Face matching didn't work on this device."} Pick the children for each photo below.`);
+    }
+    updateUploadBtn();
+  }
+  function renderGroup() {
+    $("g-review").innerHTML = gItems.map((g, i) => `<div class="g-card${g.faces === 0 || (g.faces != null && !g.kids.size) ? " none" : ""}"><img src="${g.url}" alt="">
+      <div><div class="faces">${g.faces == null ? "Checking…" : g.faces === 0 ? "No faces found, pick the children" : `${g.faces} face${g.faces > 1 ? "s" : ""} found${g.kids.size ? "" : ", no match, pick the children"}`}</div>
+      <div class="seg" data-gi="${i}">${children.map((c) => `<button type="button" data-v="${c.id}" class="${g.kids.has(c.id) ? "on" : ""}${g.auto.has(c.id) ? " auto" : ""}">${esc(c.name)}</button>`).join("")}</div></div></div>`).join("");
+  }
+  $("g-review").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); const seg = e.target.closest("[data-gi]"); if (!b || !seg) return;
+    const g = gItems[+seg.dataset.gi]; g.kids.has(b.dataset.v) ? g.kids.delete(b.dataset.v) : g.kids.add(b.dataset.v);
+    b.classList.toggle("on", g.kids.has(b.dataset.v)); updateUploadBtn();
+  });
+
   function updateUploadBtn() {
+    if (uMode === "group") {
+      const n = gItems.filter((g) => g.kids.size).length;
+      $("u-go").disabled = !n || !$("u-date").value;
+      $("u-go").textContent = n ? `Save ${n} photo${n > 1 ? "s" : ""}${n < gItems.length ? ` (${gItems.length - n} without a child skipped)` : ""}` : "Upload";
+      return;
+    }
     $("u-go").disabled = !picked.length || !$("u-child").value || !$("u-date").value;
     $("u-go").textContent = picked.length ? `Upload ${picked.length} photo${picked.length > 1 ? "s" : ""}` : "Upload";
   }
@@ -762,7 +923,32 @@
     } catch { return file; }
   }
 
+  async function saveGroup() {
+    const day = $("u-date").value, items = gItems.filter((g) => g.kids.size);
+    $("u-go").disabled = true; $("u-prog").hidden = false;
+    const bar = $("u-prog").firstElementChild; bar.style.width = "0";
+    const total = items.reduce((n, g) => n + g.kids.size, 0); let done = 0, failed = 0;
+    for (const g of items) {
+      const blob = await shrink(g.file), groupId = uuid();
+      for (const cid of g.kids) {
+        try {
+          const path = `${cid}/${day}/${uuid()}.jpg`;
+          const up = await sb.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
+          if (up.error) throw up.error;
+          const ins = await sb.from("photos").insert({ child_id: cid, taken_on: day, path, group_id: groupId });
+          if (ins.error) throw ins.error;
+        } catch (err) { console.error(err); failed++; }
+        done++; bar.style.width = (done / total) * 100 + "%";
+      }
+    }
+    $("u-prog").hidden = true;
+    const kidsN = new Set(items.flatMap((g) => [...g.kids])).size;
+    setMode("group");
+    say("u-msg", failed ? "Some photos didn't save. Check your connection and try again." : `Saved ${items.length} photo${items.length > 1 ? "s" : ""} to ${kidsN} child${kidsN > 1 ? "ren" : ""}'s day · ${niceDate(day)}. Recognizing activities…`, failed ? "err" : "ok");
+    if (!failed) analyzePhotos(day, true).then((m) => { if (m) say("u-msg", `${$("u-msg").textContent.replace(" Recognizing activities…", "")} Activities: ${m}`); });
+  }
   $("u-go").addEventListener("click", async () => {
+    if (uMode === "group") return saveGroup();
     const childId = $("u-child").value, day = $("u-date").value;
     const kid = children.find((c) => c.id === childId);
     $("u-go").disabled = true; $("u-prog").hidden = false;
@@ -1153,6 +1339,9 @@
   let lastDist = null, lastAcc = null;
   async function setupArrival() {
     if (!centerId) return;
+    const dayLink = await sb.from("centers").select("schedule_pdf").eq("id", centerId);
+    const pdf = dayLink.data && dayLink.data[0] && dayLink.data[0].schedule_pdf;
+    if (pdf) { $("pa-day").href = pdf; $("pa-day").hidden = false; }
     const { data, error } = await sb.from("centers").select("name,lat,lng,radius_m").eq("id", centerId);
     centerGeo = data && data[0] && data[0].lat != null ? data[0] : null;
     if (!centerName && data && data[0]) brand(data[0].name);

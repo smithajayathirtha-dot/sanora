@@ -55,7 +55,16 @@ Teachers log what the children did: pick an activity (circle time, art & craft, 
 outdoor play, sensory play, learning, other), an optional title, time and details, and whether it was the
 whole class or some children. Parents see each day's activities in their child's day, only the ones their child took part in.
 
+## Typical day
+The center page has an **A typical day** section and a **Download the schedule (PDF)** link (`smiles-and-imagination/typical-day.pdf`).
+Parents also get an **A typical day ↗** link in the app. The same schedule is stored on the center (`centers.schedule`).
+
 ### Activities recognized from photos
+Activities are placed in the typical-day blocks (Circle time 9:00, Hands-on activity 10:00, Indoor/outdoor play 10:30,
+Mini circle time 3:30, Outdoor play 4:00, Free play indoors 5:00) and get **the block's start time**, not the upload time.
+The upload time only helps tell apart look-alike blocks (morning vs afternoon outdoor play). Blocks where a teacher already
+logged an activity are skipped. Copies of one group photo are sent once, tagged with every child in it.
+
 After each upload (and when a teacher taps **From photos** in Activities), the server function `api/analyze-activities.js`
 sends that day's photos (up to 20) to Claude's vision API, checks each photo against the eight activity categories (Circle time, Art & craft, Music & movement, Story time,
 Outdoor play, Sensory play, Learning, Other), and adds at most one entry per category, marked **From photos**,
@@ -65,6 +74,14 @@ Re-running replaces only the earlier "From photos" entries for that day.
 **To switch it on:** create an API key at https://console.anthropic.com → in Vercel open the **sanora** project →
 **Settings → Environment Variables** → add `ANTHROPIC_API_KEY` (all environments) → **Deployments → Redeploy**.
 Optional: `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`). Then re-run `supabase/schema.sql` (adds the `source` and `photo_ids` columns).
+
+## Group photos and face matching
+**Upload → Group photos** takes photos of several children at once. On the teacher's phone, faces are compared with the
+profile photos of children whose parents agreed to photo matching (Children → Edit → profile photo + consent checkbox).
+Each photo shows the matched children (✓); the teacher adds anyone missed or removes wrong matches, then saves. A photo is
+saved to every chosen child's day (sharing one `group_id`), then activities are recognized as usual.
+Matching runs in the browser with the open-source face-api library (models load once, about 12 MB); no face data is stored
+or sent anywhere. Children without consent are never matched automatically but can be picked by hand.
 
 ## How the photo flow works
 1. **Upload**: the teacher picks a child and a date, then takes or chooses photos.
@@ -116,4 +133,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, activities, messages, and their access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, activities, messages, the schedule, profile photos, and their access rules.

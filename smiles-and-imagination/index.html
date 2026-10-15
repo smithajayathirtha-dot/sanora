@@ -82,6 +82,17 @@
   .pillar p{color:var(--muted);font-size:.97rem}
   .p1 .ic{background:var(--sun-soft);color:#c98a00}.p2 .ic{background:var(--sky-soft);color:var(--sky)}.p3 .ic{background:var(--coral-soft);color:var(--coral)}.p4 .ic{background:var(--leaf-soft);color:var(--leaf)}
 
+  /* typical day */
+  .schedule{list-style:none;padding:0;margin-top:28px;display:grid;grid-template-columns:1fr;gap:10px;max-width:780px}
+  .slot{display:grid;grid-template-columns:148px 1fr;gap:14px;align-items:start;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:14px 16px}
+  .slot .t{font-weight:800;font-size:.9rem;color:var(--ink);padding-top:2px}
+  .slot b{display:block;font-family:Fredoka,sans-serif;font-weight:600;font-size:1.08rem}
+  .slot div span{color:var(--muted);font-size:.93rem}
+  .slot.sun{border-color:#f8d98c}.slot.sky{border-color:#bcdaf3}.slot.coral{border-color:#f5bcb5}.slot.leaf{border-color:#bfe0c4}
+  .slot.plain{background:transparent}
+  @media (max-width:900px){.schedule{grid-template-columns:1fr}}
+  @media (max-width:520px){.slot{grid-template-columns:1fr;gap:2px}}
+
   /* care */
   .care{background:var(--surface);border-top:2px solid var(--line);border-bottom:2px solid var(--line)}
   .care-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 28px;margin-top:28px}
@@ -158,6 +169,7 @@
     <nav class="links">
       <a class="hide-sm" href="#about">About</a>
       <a class="hide-sm" href="#program">Program</a>
+      <a class="hide-sm" href="#day">Typical day</a>
       <a class="hide-sm" href="#visit">Visit</a>
       <a class="btn small ghost" href="/app/?center=smiles-and-imagination">Sign in</a>
     </nav>
@@ -267,6 +279,35 @@
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13.5 20a4 4 0 0 1 8 0"/></svg></div>
           <h3>Confidence</h3><p>Friendships and gentle encouragement help children speak up and try new things.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="day">
+    <div class="wrap">
+      <p class="eyebrow">A typical day</p>
+      <h2>Roots of knowledge. Branches of success.</h2>
+      <p class="sub">A gentle, predictable rhythm helps little ones feel safe and ready to explore.</p>
+      <ol class="schedule">
+          <li class="slot sun"><span class="t">8:15 AM</span><div><b>Arrival</b><span>Each little one is welcomed with a warm hug and settles in comfortably for the day.</span></div></li>
+          <li class="slot sky"><span class="t">9:00 – 9:30 AM</span><div><b>Circle time</b><span>Songs, stories, language, math, practical life, science experiments, and group learning together.</span></div></li>
+          <li class="slot plain"><span class="t">9:30 – 10:00 AM</span><div><b>Snack time</b><span>Little ones refuel and recharge.</span></div></li>
+          <li class="slot coral"><span class="t">10:00 – 10:30 AM</span><div><b>Hands-on activity</b><span>Art, sensory play, or structured learning.</span></div></li>
+          <li class="slot leaf"><span class="t">10:30 – 11:30 AM</span><div><b>Indoor / outdoor play</b><span>Fresh air, movement, and exploration.</span></div></li>
+          <li class="slot plain"><span class="t">11:30 – 11:45 AM</span><div><b>Getting ready for lunch</b><span>Diaper changes, handwashing, and getting ready for lunch.</span></div></li>
+          <li class="slot plain"><span class="t">11:45 AM – 12:45 PM</span><div><b>Lunchtime</b><span>A calm, relaxed meal together.</span></div></li>
+          <li class="slot plain"><span class="t">12:45 – 2:30 PM</span><div><b>Naptime</b><span>Quiet rest in a cozy, peaceful environment.</span></div></li>
+          <li class="slot plain"><span class="t">2:30 – 3:00 PM</span><div><b>Wake-up</b><span>Diaper changes and a gentle wake-up routine.</span></div></li>
+          <li class="slot plain"><span class="t">3:00 – 3:30 PM</span><div><b>Afternoon snack</b><span>Afternoon snack time.</span></div></li>
+          <li class="slot sky"><span class="t">3:30 – 4:00 PM</span><div><b>Mini circle time</b><span>Books, yoga, music and movement, show and tell, or a fun group activity.</span></div></li>
+          <li class="slot leaf"><span class="t">4:00 – 5:00 PM</span><div><b>Outdoor play</b><span>Active time, games, and fresh air.</span></div></li>
+          <li class="slot sun"><span class="t">5:00 – 5:45 PM</span><div><b>Free play indoors</b><span>Children wind down as families arrive for pick-up.</span></div></li>
+      </ol>
+      <div class="actions" style="justify-content:flex-start;margin-top:22px">
+        <a class="btn ghost" href="typical-day.pdf" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+          Download the schedule (PDF)
+        </a>
       </div>
     </div>
   </section>
