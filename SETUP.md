@@ -53,7 +53,11 @@ Parents only see messages for everyone at their center or for their own child; t
 ## Activities
 Teachers log what the children did: pick an activity (circle time, art & craft, music & movement, story time,
 outdoor play, sensory play, learning, other), an optional title, time and details, and whether it was the
-whole class or some children. Parents see each day's activities in their child's day, only the ones their child took part in.
+whole class or some children. The list below the form has its own date picker for looking at past days.
+Parents see each day's activities in their child's day, only the ones their child took part in.
+
+**Re-timing older activities:** `supabase/retime-activities.sql` moves existing activities to their typical-day block's start
+time (e.g. a story at 9:10 → 9:00 Circle time, outdoor play at 4:20 → 4:00). Run it once in the SQL Editor.
 
 ## Typical day
 The center page has an **A typical day** section and a **Download the schedule (PDF)** link (`smiles-and-imagination/typical-day.pdf`).
@@ -93,7 +97,7 @@ or sent anywhere. Children without consent or a profile photo are never matched,
 1. **Upload**: the teacher picks the date, then takes or chooses photos. They are matched to children (see above),
    shrunk to a maximum of 1600 px and saved under `<child>/<date>/` (or `pool/<center>/<date>/` for Class photos) in the private bucket.
 2. **Photos** (the screen teachers see after signing in): every upload is organized by day (newest first), then by child.
-   A filter shows one child's photos. To share, tap photos in one child's group, or tap "Select all", then tap **Share**.
+   Filters show one child's photos (or Class photos) and/or one date. To share, tap photos in one child's group, or tap "Select all", then tap **Share**.
    Pick WhatsApp in the share sheet, then the parent's chat. The photos are marked **Sent**.
    - On a desktop browser that can't share files, the photos download and WhatsApp opens directly in the parent's chat.
 3. **Children**: add each child with the parent's name, WhatsApp number (including country code), email, an optional second parent's email, and any allergies. Both parent emails can sign in.
@@ -104,7 +108,8 @@ or sent anywhere. Children without consent or a profile photo are never matched,
 In the **Daily note** tab, the teacher picks a child and fills in today's note: lunch (no / ate some / ate most / ate all),
 snack, bowel movement (and how many times), nap (and how long), notes, and the teacher's sign (pre-filled from their Google name).
 Tap an answer again to clear it. There is one note per child per day; saving again updates it.
-The "Today's notes" list shows which children still need one. Parents see the note at the top of that day, above the photos.
+The notes list below the form shows which children still need one today; pick another date there to read that day's notes.
+Parents see the note at the top of that day, above the photos.
 
 ## Check-in / check-out
 Parents check their child in at drop-off and out at pick-up from the top of their screen.

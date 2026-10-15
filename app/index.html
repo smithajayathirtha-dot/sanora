@@ -179,6 +179,17 @@
   .nstat:first-child{border-top:0}
   .nstat .ok{color:var(--leaf);font-weight:700;font-size:.88rem}
   .nstat .no{color:var(--muted);font-size:.88rem}
+  div.nstat{cursor:default}
+  .view-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .view-head .ftitle{margin:0}
+  .view-date{display:flex;align-items:center;gap:6px}
+  .view-date input{width:auto;margin:0;padding:8px 10px;font-size:.9rem}
+  .view-date .link{font-size:.85rem;white-space:nowrap}
+  .nview{padding-top:10px}
+  .nview > b{display:block;margin:6px 0 -2px}
+  .p-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .p-filters select{flex:1 1 100%;min-width:0;margin-bottom:0}
+  .p-filters input{width:auto;flex:none;margin:0}
   .note{background:var(--leaf-soft);border-radius:14px;padding:12px 14px;margin-top:10px}
   .note:first-child{margin-top:0}
   .note h3{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--leaf);margin-bottom:6px}
@@ -297,7 +308,9 @@
       <div id="ac-msg"></div>
     </div>
     <div class="card">
-      <div class="ai-head"><h2 class="ftitle" id="ac-list-title">Today's activities</h2>
+      <div class="view-head"><h2 class="ftitle" id="ac-list-title">Today's activities</h2>
+        <div class="view-date"><input id="ac-view" type="date" aria-label="Show activities for date"><button class="link" id="ac-view-today" type="button" hidden>Today</button></div></div>
+      <div class="ai-head" style="justify-content:flex-end">
         <button class="btn small ai-btn" id="ac-ai" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.8 1.7 1.7.8-1.7.8L19 20l-.8-1.7-1.7-.8 1.7-.8z"/></svg>From photos</button></div>
       <p class="hint" style="margin:2px 0 0">Activities are also recognized from the day's photos after each upload. Your own entries are never changed.</p>
       <div id="ac-ai-msg"></div>
@@ -326,7 +339,8 @@
   <section id="v-photos" hidden>
     <h1>Photos</h1>
     <p class="hint">Every upload, organized by day and child. Tap photos to select, then share them with the parent or delete them.</p>
-    <select id="p-filter" aria-label="Show photos for"></select>
+    <div class="p-filters"><select id="p-filter" aria-label="Show photos for"></select>
+      <input id="p-date" type="date" aria-label="Show photos for date"><button class="link" id="p-date-clear" type="button" hidden>All dates</button></div>
     <div id="p-list"></div>
     <div class="empty" id="p-empty" hidden></div>
     <div id="p-msg"></div>
@@ -357,7 +371,12 @@
       <button class="btn" id="n-save" type="button">Save note</button>
       <div id="n-msg"></div>
     </div>
-    <div class="card"><h2 class="ftitle">Today's notes</h2><div id="n-status"></div></div>
+    <div class="card">
+      <div class="view-head"><h2 class="ftitle" id="n-view-title">Today's notes</h2>
+        <div class="view-date"><input id="n-view" type="date" aria-label="Show notes for date"><button class="link" id="n-view-today" type="button" hidden>Today</button></div></div>
+      <div id="n-status"></div>
+      <div id="n-view-list"></div>
+    </div>
   </section>
 
   <!-- Parent view -->
@@ -946,6 +965,8 @@
     if (children.some((c) => c.id === keep)) $("p-filter").value = keep;
   }
   $("p-filter").addEventListener("change", () => { clearSelection(); renderLibrary(); });
+  $("p-date").addEventListener("change", () => { clearSelection(); renderLibrary(); });
+  $("p-date-clear").addEventListener("click", () => { $("p-date").value = ""; clearSelection(); renderLibrary(); });
 
   async function loadLibrary() {
     const token = ++loadToken;
@@ -966,9 +987,11 @@
 
   function renderLibrary() {
     const only = $("p-filter").value;
-    const rows = photos.filter((p) => !only || (only === "pool" ? !p.child_id : p.child_id === only));
+    const day = $("p-date").value;
+    $("p-date-clear").hidden = !day;
+    const rows = photos.filter((p) => (!only || (only === "pool" ? !p.child_id : p.child_id === only)) && (!day || p.taken_on === day));
     $("p-empty").hidden = rows.length > 0;
-    $("p-empty").textContent = only === "pool" ? "No class photos. Group photos with no matched child land here." : only ? "No photos for this child yet." : "No photos yet. Use Upload to add the first ones.";
+    $("p-empty").textContent = day ? `No photos${only ? " here" : ""} on ${niceDate(day)}.` : only === "pool" ? "No class photos. Photos with no matched child land here." : only ? "No photos for this child yet." : "No photos yet. Use Upload to add the first ones.";
     const days = new Map();
     rows.forEach((p) => {
       if (!days.has(p.taken_on)) days.set(p.taken_on, new Map());
@@ -1134,16 +1157,38 @@
     const m = (me && me.user_metadata) || {};
     return m.full_name || m.name || (me && me.email ? me.email.split("@")[0] : "");
   };
+  let viewNotes = new Map();
   async function loadNotes() {
     $("n-date-label").textContent = `Today · ${niceDate(today())}`;
+    if (!$("n-view").value) $("n-view").value = today();
     const { data, error } = await sb.from("daily_notes").select("*").eq("note_date", today());
     if (error) { say("n-msg", error.message, "err"); return; }
     todayNotes = new Map((data || []).map((n) => [n.child_id, n]));
-    renderNoteStatus(); fillNoteForm();
+    fillNoteForm(); await loadViewNotes();
+  }
+  // The notes list below the form: any date (today's rows can be tapped to edit)
+  async function loadViewNotes() {
+    const d = $("n-view").value || today();
+    if (d === today()) viewNotes = todayNotes;
+    else {
+      const { data, error } = await sb.from("daily_notes").select("*").eq("note_date", d);
+      if (error) { say("n-msg", error.message, "err"); return; }
+      viewNotes = new Map((data || []).map((n) => [n.child_id, n]));
+    }
+    renderNoteStatus();
   }
   function renderNoteStatus() {
-    $("n-status").innerHTML = children.length ? children.map((c) => `<button class="nstat" data-kid="${c.id}"><b>${esc(c.name)}</b>${todayNotes.has(c.id) ? '<span class="ok">✓ Saved</span>' : '<span class="no">Not yet</span>'}</button>`).join("") : `<div class="empty">Add children first.</div>`;
+    const d = $("n-view").value || today(), isToday = d === today();
+    $("n-view-title").textContent = isToday ? "Today's notes" : `Notes · ${niceDate(d)}`;
+    $("n-view-today").hidden = isToday;
+    $("n-status").innerHTML = children.length ? children.map((c) => {
+      const st = viewNotes.has(c.id) ? '<span class="ok">✓ Saved</span>' : `<span class="no">${isToday ? "Not yet" : "No note"}</span>`;
+      return isToday ? `<button class="nstat" data-kid="${c.id}"><b>${esc(c.name)}</b>${st}</button>` : `<div class="nstat"><b>${esc(c.name)}</b>${st}</div>`;
+    }).join("") : `<div class="empty">Add children first.</div>`;
+    $("n-view-list").innerHTML = children.filter((c) => viewNotes.has(c.id)).map((c) => `<div class="nview"><b>${esc(c.name)}</b>${noteHtml(viewNotes.get(c.id))}</div>`).join("");
   }
+  $("n-view").addEventListener("change", loadViewNotes);
+  $("n-view-today").addEventListener("click", () => { $("n-view").value = today(); loadViewNotes(); });
   $("n-status").addEventListener("click", (e) => {
     const b = e.target.closest("[data-kid]"); if (!b) return;
     $("n-child").value = b.dataset.kid; fillNoteForm(); say("n-msg", "");
@@ -1195,7 +1240,7 @@
     say("n-msg", `Saved ${kid ? kid.name + "'s" : "the"} note. Parents can see it now.`);
     const { data } = await sb.from("daily_notes").select("*").eq("note_date", today());
     todayNotes = new Map((data || []).map((n) => [n.child_id, n]));
-    renderNoteStatus();
+    $("n-view").value = today(); await loadViewNotes();
     $("n-save").textContent = "Update note";
   });
   function noteHtml(n) {
@@ -1467,17 +1512,22 @@
   $("ac-kind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; acKind = acKind === b.dataset.v ? null : b.dataset.v; paintAc(); say("ac-msg", ""); });
   $("ac-who").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; acWho = b.dataset.v; paintAc(); });
   $("ac-kids").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; acPicked.has(b.dataset.v) ? acPicked.delete(b.dataset.v) : acPicked.add(b.dataset.v); paintAc(); });
-  $("ac-date").addEventListener("change", () => { renderActList(); refreshActs(); });
+  // The list below the form has its own date; picking a date in the form shows that day too
+  const acView = () => $("ac-view").value || today();
+  $("ac-date").addEventListener("change", () => { $("ac-view").value = $("ac-date").value || today(); refreshActs(); });
+  $("ac-view").addEventListener("change", refreshActs);
+  $("ac-view-today").addEventListener("click", () => { $("ac-view").value = today(); refreshActs(); });
   let actRows = [];
   async function loadActivities() {
     if (!$("ac-date").value) $("ac-date").value = today();
+    if (!$("ac-view").value) $("ac-view").value = $("ac-date").value;
     $("ac-time").value = nowTime();
     $("ac-kids").innerHTML = children.map((c) => `<button type="button" data-v="${c.id}">${esc(c.name)}</button>`).join("");
     paintAc();
     await refreshActs();
   }
   async function refreshActs() {
-    const d = $("ac-date").value || today();
+    const d = acView();
     const { data, error } = await sb.from("activities").select("*").eq("center_id", centerId).eq("act_date", d);
     if (error) { say("ac-msg", error.message, "err"); return; }
     actRows = (data || []).sort((a, b) => String(a.act_time || "").localeCompare(String(b.act_time || "")));
@@ -1505,7 +1555,7 @@
       if (!r.ok) throw new Error(j.error || "Couldn't analyze the photos.");
       const msg = j.note ? j.note : j.added ? `Added ${j.added} activit${j.added > 1 ? "ies" : "y"} from ${j.photos} photo${j.photos > 1 ? "s" : ""}: ${j.activities.map((a) => a.title || a.kind).join(", ")}.` : `Checked ${j.photos} photo${j.photos > 1 ? "s" : ""}; nothing new beyond what's already logged.`;
       if (!quiet) say("ac-ai-msg", msg);
-      if (!$("v-act").hidden && ($("ac-date").value || today()) === date) refreshActs();
+      if (!$("v-act").hidden && acView() === date) refreshActs();
       return msg;
     } catch (e) {
       if (!quiet) say("ac-ai-msg", e.message, "err");
@@ -1515,12 +1565,13 @@
       if (aiAgain) { const d = aiAgain; aiAgain = null; analyzePhotos(d, true); }
     }
   }
-  $("ac-ai").addEventListener("click", () => analyzePhotos($("ac-date").value || today(), false));
+  $("ac-ai").addEventListener("click", () => analyzePhotos(acView(), false));
 
   function renderActList() {
-    const d = $("ac-date").value || today();
+    const d = acView();
     $("ac-list-title").textContent = d === today() ? "Today's activities" : `Activities · ${niceDate(d)}`;
-    $("ac-list").innerHTML = actRows.length ? `<div class="acts">${actRows.map((a) => actItem(a, true)).join("")}</div>` : `<div class="empty">Nothing logged yet.</div>`;
+    $("ac-view-today").hidden = d === today();
+    $("ac-list").innerHTML = actRows.length ? `<div class="acts">${actRows.map((a) => actItem(a, true)).join("")}</div>` : `<div class="empty">${d === today() ? "Nothing logged yet." : "Nothing logged that day."}</div>`;
   }
   $("ac-save").addEventListener("click", async () => {
     if (!acKind) { say("ac-msg", "Pick an activity.", "err"); return; }
@@ -1536,7 +1587,7 @@
     if (error) { say("ac-msg", error.message, "err"); return; }
     say("ac-msg", `Saved ${row.title || row.kind} for ${whoText(row.child_ids).toLowerCase() === "whole class" ? "the whole class" : whoText(row.child_ids)}.`);
     acKind = null; acWho = "all"; acPicked.clear(); $("ac-title").value = ""; $("ac-details").value = ""; $("ac-time").value = nowTime(); paintAc();
-    refreshActs();
+    $("ac-view").value = row.act_date; refreshActs();
   });
   $("ac-list").addEventListener("click", async (e) => {
     const b = e.target.closest("[data-del-act]"); if (!b) return;
