@@ -42,7 +42,13 @@ the children, photos, notes and check-ins of their own center. The database enfo
 
 ## Teacher app layout
 Bottom tabs, in order: **Check-in · Daily note · Activities · Upload · Photos** (it opens on Check-in).
-**Children** and **Staff** are in the **☰** menu at the top right, along with Sign out.
+**Messages**, **Children** and **Staff** are in the **☰** menu at the top right, along with Sign out.
+
+## Messages
+Heads and teachers open **☰ → Messages**, choose **All families** or **Select children**, write the message and tap **Send**.
+Parents see messages at the top of their screen (the 3 newest, with "Show older messages"); new ones are highlighted and
+marked read once shown. The Sent list shows who it went to and "Read by X of Y parents"; messages can be deleted.
+Parents only see messages for everyone at their center or for their own child; they can't send messages.
 
 ## Activities
 Teachers log what the children did: pick an activity (circle time, art & craft, music & movement, story time,
@@ -110,4 +116,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, activities, and their access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, activities, messages, and their access rules.

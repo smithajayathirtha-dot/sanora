@@ -109,6 +109,26 @@ create table if not exists public.attendance (
   unique (child_id, att_date)
 );
 
+-- Messages from the center to families: to everyone (child_ids null) or to chosen children's parents
+create table if not exists public.messages (
+  id            uuid primary key default gen_random_uuid(),
+  center_id     text not null references public.centers(id) on delete cascade,
+  child_ids     uuid[],                    -- null = all families
+  body          text not null check (length(body) between 1 and 2000),
+  sender_email  text,
+  sender_name   text,
+  created_at    timestamptz not null default now()
+);
+create index if not exists messages_center_created on public.messages (center_id, created_at desc);
+
+-- Who has read which message (one row per parent email)
+create table if not exists public.message_reads (
+  message_id  uuid not null references public.messages(id) on delete cascade,
+  email       text not null,
+  read_at     timestamptz not null default now(),
+  primary key (message_id, email)
+);
+
 -- Activities: what the class (or some children) did, logged by teachers
 create table if not exists public.activities (
   id          uuid primary key default gen_random_uuid(),
@@ -230,11 +250,22 @@ returns json language sql stable security definer set search_path = public as $$
   );
 $$;
 
+-- Messages reuse the activity rule: whole center, or tagged with one of my children
+create or replace function public.can_parent_see_message(mid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.messages m where m.id = mid and public.can_parent_see_activity(m.center_id, m.child_ids));
+$$;
+create or replace function public.can_staff_message(mid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.messages m where m.id = mid and public.can_staff_center(m.center_id));
+$$;
+
 grant execute on function
   public.my_email(), public.is_staff(), public.is_admin(), public.my_staff_role(), public.my_center(),
   public.can_staff_center(text), public.can_staff_child(uuid), public.can_staff_path(text),
   public.is_parent_of(uuid), public.is_parent_of_path(text), public.my_role(), public.my_profile(),
-  public.can_parent_see_activity(text, uuid[]), public.is_my_email(text, text)
+  public.can_parent_see_activity(text, uuid[]), public.is_my_email(text, text),
+  public.can_parent_see_message(uuid), public.can_staff_message(uuid)
 to authenticated;
 
 -- ===============================================================
@@ -346,6 +377,25 @@ $$;
 drop trigger if exists attendance_lock on public.attendance;
 create trigger attendance_lock before update on public.attendance
   for each row execute function public.lock_attendance();
+
+alter table public.messages      enable row level security;
+alter table public.message_reads enable row level security;
+drop policy if exists "staff all messages"   on public.messages;
+drop policy if exists "parent read messages" on public.messages;
+create policy "staff all messages" on public.messages
+  for all to authenticated using (public.can_staff_center(center_id)) with check (public.can_staff_center(center_id));
+create policy "parent read messages" on public.messages
+  for select to authenticated using (public.can_parent_see_activity(center_id, child_ids));
+
+drop policy if exists "read own receipts"        on public.message_reads;
+drop policy if exists "parent marks read"        on public.message_reads;
+drop policy if exists "staff see receipts"       on public.message_reads;
+create policy "read own receipts" on public.message_reads
+  for select to authenticated using (lower(email) = public.my_email());
+create policy "parent marks read" on public.message_reads
+  for insert to authenticated with check (lower(email) = public.my_email() and public.can_parent_see_message(message_id));
+create policy "staff see receipts" on public.message_reads
+  for select to authenticated using (public.can_staff_message(message_id));
 
 -- Private storage bucket for the photo files
 insert into storage.buckets (id, name, public)
