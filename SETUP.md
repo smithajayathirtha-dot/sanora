@@ -127,7 +127,7 @@ A check-out time earlier than the check-in time is rejected.
 Teachers see every child's entries for any date in the **Check-in** tab: times, the parent's name and signature, and how many children are here now.
 
 ## Arrival reminders (check in / check out near the daycare)
-1. **Head, once:** stand at the center, open **☰ → Staff → Center location** and tap **Use my current location as the center**.
+1. **Head, once:** (Smiles and Imagination is already set to 4338 Denker Dr, Pleasanton.) To change it, stand at the center, open **☰ → Staff → Center location** and tap **Use my current location as the center**.
 2. **Parent:** on their screen, tap **Turn on** next to *Arrival reminders* and allow location.
    While the app is open and they're within about 150 m of the center, a popup asks
    **Check in Sanmay?** (before 12 noon or not yet checked in) or **Check out Sanmay?** (after 12 noon, once checked in).
