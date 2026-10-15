@@ -5,6 +5,14 @@
 -- Activities only for half-day children (picked up after lunch, 12:45) only use morning blocks.
 -- Run it in the Supabase SQL Editor. Running it again changes nothing.
 
+-- The typical day comes from centers.schedule, which supabase/schema.sql saves
+do $$ begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'centers' and column_name = 'schedule')
+     or not exists (select 1 from public.centers where jsonb_array_length(coalesce(schedule, '[]'::jsonb)) > 0) then
+    raise exception 'No typical-day schedule saved yet. Run all of supabase/schema.sql first, then run this again.';
+  end if;
+end $$;
+
 alter table public.children add column if not exists half_day boolean not null default false;
 
 -- Sanmay is on a half day for now (change it any time in the app: Children → Edit → Half day)
