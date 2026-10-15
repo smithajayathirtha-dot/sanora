@@ -100,7 +100,9 @@ module.exports = async (req, res) => {
     if (!kids.length) return send(res, 200, { added: 0, activities: [], note: "No children in this center yet." });
     const nameOf = Object.fromEntries(kids.map((k) => [k.id, k.name]));
     const ids = kids.map((k) => k.id).join(",");
-    const all = await sbFetch(`/rest/v1/photos?select=id,child_id,path,created_at,group_id&taken_on=eq.${date}&child_id=in.(${ids})&order=created_at.desc&limit=200`, token);
+    // The children's photos plus the center's class pool (group photos where no child was recognized)
+    const who = `or=(child_id.in.(${ids}),and(child_id.is.null,center_id.eq.${encodeURIComponent(centerId)}))`;
+    const all = await sbFetch(`/rest/v1/photos?select=id,child_id,path,created_at,group_id&taken_on=eq.${date}&${who}&order=created_at.desc&limit=200`, token);
     // A group photo saved for several children is one picture: send it once, labeled with all of them
     const groups = new Map();
     for (const p of all) {
@@ -125,7 +127,7 @@ module.exports = async (req, res) => {
     const localTime = (iso) => { const d = new Date(Date.parse(iso) - (Number(tz) || 0) * 60000); return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`; };
     const content = [];
     usable.forEach((p, i) => {
-      const who = [...new Set(p.members.map((m) => nameOf[m.child_id]).filter(Boolean))].join(", ") || "unknown";
+      const who = [...new Set(p.members.map((m) => nameOf[m.child_id]).filter(Boolean))].join(", ") || "not identified (class photo)";
       content.push({ type: "text", text: `Photo ${i + 1} (children: ${who}; uploaded at ${fmt12(localTime(p.created_at))})` });
       content.push({ type: "image", source: { type: "url", url: urlFor[p.path] } });
     });
@@ -190,6 +192,8 @@ module.exports = async (req, res) => {
       if (!merged.has(key)) merged.set(key, { ...a, kind, time, photos: [] });
       const m = merged.get(key); m.photos = [...new Set([...m.photos, ...(a.photos || [])])];
     }
+    // Children seen in the photos; class-pool photos only (no child identified) count as the whole class
+    const kidsOf = (members) => { const k = [...new Set(members.map((m) => m.child_id).filter(Boolean))]; return k.length ? k : null; };
     const rows = [];
     for (const a of merged.values()) {
       const ps = (a.photos || []).map((n) => usable[n - 1]).filter(Boolean);
@@ -201,7 +205,7 @@ module.exports = async (req, res) => {
         kind: a.kind,
         title: String(a.title || "").slice(0, 80) || null,
         details: String(a.details || "").slice(0, 400) || null,
-        child_ids: [...new Set(members.map((m) => m.child_id))],
+        child_ids: kidsOf(members),
         photo_ids: members.map((m) => m.id),
         source: "ai", created_by: "Recognized from photos"
       });
@@ -211,7 +215,7 @@ module.exports = async (req, res) => {
     await sbFetch(`/rest/v1/activities?center_id=eq.${encodeURIComponent(centerId)}&act_date=eq.${date}&source=eq.ai`, token, { method: "DELETE" });
     if (rows.length) await sbFetch("/rest/v1/activities", token, { method: "POST", body: JSON.stringify(rows), headers: { Prefer: "return=minimal" } });
 
-    return send(res, 200, { added: rows.length, photos: usable.length, activities: rows.map((r) => ({ kind: r.kind, title: r.title, time: r.act_time, children: r.child_ids.map((id) => nameOf[id]) })) });
+    return send(res, 200, { added: rows.length, photos: usable.length, activities: rows.map((r) => ({ kind: r.kind, title: r.title, time: r.act_time, children: r.child_ids ? r.child_ids.map((id) => nameOf[id]) : ["Whole class"] })) });
   } catch (e) {
     return send(res, e.status === 401 ? 401 : 500, { error: e.message || "Something went wrong." });
   }

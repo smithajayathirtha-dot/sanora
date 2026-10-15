@@ -75,17 +75,23 @@ Re-running replaces only the earlier "From photos" entries for that day.
 **Settings → Environment Variables** → add `ANTHROPIC_API_KEY` (all environments) → **Deployments → Redeploy**.
 Optional: `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`). Then re-run `supabase/schema.sql` (adds the `source` and `photo_ids` columns).
 
-## Group photos and face matching
-**Upload → Group photos** takes photos of several children at once. On the teacher's phone, faces are compared with the
-profile photos of children whose parents agreed to photo matching (Children → Edit → profile photo + consent checkbox).
-Each photo shows the matched children (✓); the teacher adds anyone missed or removes wrong matches, then saves. A photo is
-saved to every chosen child's day (sharing one `group_id`), then activities are recognized as usual.
+## Upload: photos sorted to children automatically
+**Upload** has one flow: pick the date (defaults to today), then take or choose photos. On the teacher's phone, faces in each
+photo are compared with the profile photos of children whose parents agreed to photo matching (Children → Edit → profile photo
++ consent checkbox), and each photo is saved straight to the day of every child recognized in it (copies share one `group_id`).
+There is no review step. Photos with **no match** go to **Class photos** for the center (`pool/<center_id>/<date>/`), which only
+staff can see. Activities are then recognized from all the day's photos, including Class photos (an activity seen only in Class
+photos counts for the whole class).
+
+In **Photos**, Class photos appear last in each day (or pick *Class photos (no match)* in the filter). Select some and use
+**Move to…** to put them in a child's day so the parents see them, or share or delete them.
+
 Matching runs in the browser with the open-source face-api library (models load once, about 12 MB); no face data is stored
-or sent anywhere. Children without consent are never matched automatically but can be picked by hand.
+or sent anywhere. Children without consent or a profile photo are never matched, so their photos land in Class photos.
 
 ## How the photo flow works
-1. **Upload**: the teacher picks a child and a date, then takes or chooses photos.
-   The photos are shrunk to a maximum of 1600 px and saved under `<child>/<date>/` in the private bucket.
+1. **Upload**: the teacher picks the date, then takes or chooses photos. They are matched to children (see above),
+   shrunk to a maximum of 1600 px and saved under `<child>/<date>/` (or `pool/<center>/<date>/` for Class photos) in the private bucket.
 2. **Photos** (the screen teachers see after signing in): every upload is organized by day (newest first), then by child.
    A filter shows one child's photos. To share, tap photos in one child's group, or tap "Select all", then tap **Share**.
    Pick WhatsApp in the share sheet, then the parent's chat. The photos are marked **Sent**.
@@ -133,4 +139,4 @@ The database enforces this: a parent's account can't read any other child's rows
   2. In Supabase, go to **Authentication → Emails → SMTP Settings** and enable custom SMTP:
      host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender e.g. `Sanora <hello@yourdomain>`.
 
-After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, activities, messages, the schedule, profile photos, and their access rules.
+After pulling this version, re-run `supabase/schema.sql` in the SQL Editor (it's safe to re-run) to add the parent email column, the daily notes and attendance tables, centers and staff roles, activities, messages, the schedule, profile photos, Class photos, and their access rules.

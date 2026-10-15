@@ -95,9 +95,8 @@
   .g-card:first-child{border-top:0}
   .g-card img{width:96px;height:96px;object-fit:cover;border-radius:12px;background:var(--leaf-soft)}
   .g-card .faces{font-size:.8rem;color:var(--muted);margin-bottom:6px}
-  .g-card .seg button{flex:0 0 auto;padding:6px 10px;font-size:.84rem}
-  .g-card .seg button.auto::after{content:" ✓";font-weight:800}
-  .g-card.none .faces{color:var(--danger)}
+  .g-card .names{font-weight:700}
+  .g-card.pool .names{color:var(--muted)}
   .pp-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .pp{width:56px;height:56px;border-radius:50%;background:var(--petal-soft) center/cover no-repeat;flex:none;display:grid;place-items:center;color:#c25570;font-weight:700}
   .consent{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.88rem;color:var(--muted);margin-top:16px;line-height:1.4}
@@ -216,6 +215,9 @@
   .sharebar .btn.del{background:transparent;color:#ffb4ae;border:1px solid rgba(255,180,174,.5);padding:11px 12px}
   .sharebar .btn.del.confirm{background:var(--danger);color:#fff;border-color:var(--danger)}
   @media (max-width:420px){.sharebar .btn.del #sb-del-label{display:none}.sharebar .btn.del.confirm #sb-del-label{display:inline}}
+  .sharebar select{width:auto;flex:none;max-width:118px;margin:0;padding:10px 8px;font-size:.88rem;border-radius:12px;background:#fff;color:var(--ink)}
+  @media (max-width:420px){.sharebar.pool #sb-label{display:none}.sharebar.pool .btn.wa{padding:11px 12px}}
+  .sharebar .info span{white-space:nowrap}
   .sharebar .x{background:none;border:0;color:#fff;opacity:.7;font-size:1.3rem;cursor:pointer;padding:4px 6px}
   body.selecting{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
 </style>
@@ -306,22 +308,16 @@
   <!-- Upload -->
   <section id="v-upload" hidden>
     <h1>Upload photos</h1>
-    <div class="seg" id="u-mode" style="margin-bottom:6px"><button type="button" data-v="one" class="on">One child</button><button type="button" data-v="group">Group photos</button></div>
-    <p class="hint" id="u-hint">Photos are saved under the child and the date.</p>
-    <div class="row">
-      <div id="u-child-wrap"><label for="u-child">Child</label><select id="u-child" class="child-select"></select></div>
-      <div><label for="u-date">Date</label><input id="u-date" type="date"></div>
-    </div>
+    <p class="hint" id="u-hint">Add today's photos. Each photo is matched on this phone to the children in it (those with a profile photo and photo matching turned on) and saved to their day. Photos with no match go to Class photos.</p>
+    <div style="max-width:220px"><label for="u-date">Date</label><input id="u-date" type="date"></div>
     <label for="u-files" class="drop" style="margin-top:16px">
       <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3f7d4e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg>
       <strong>Take or choose photos</strong>
       <span id="u-count">You can pick several at once</span>
     </label>
     <input id="u-files" type="file" accept="image/*" multiple hidden>
-    <div class="thumbs" id="u-preview"></div>
     <div id="g-status" class="hint" style="margin-top:12px" hidden></div>
     <div id="g-review"></div>
-    <button class="btn" id="u-go" disabled>Upload</button>
     <div class="progress" id="u-prog" hidden><i></i></div>
     <div id="u-msg"></div>
   </section>
@@ -505,6 +501,7 @@
   <button class="x" id="sb-clear" aria-label="Clear selection">×</button>
   <div class="info"><span id="sb-count"></span><small id="sb-tip"></small></div>
   <button class="btn del" id="sb-del" type="button" aria-label="Delete selected photos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span id="sb-del-label">Delete</span></button>
+  <select id="sb-move" aria-label="Move to a child's day" hidden></select>
   <button class="btn wa" id="sb-go" disabled>
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l2 .9c.3.2.5.2.5.4.1.1.1.7-.2 1.3z"/></svg>
     <span id="sb-label">Share</span>
@@ -729,7 +726,6 @@
       if (children.some((c) => c.id === keep)) sel.value = keep;
     });
     renderFilter();
-    updateUploadBtn();
   }
   let editingId = null, ppFile = null;
   function paintPp(url, name) {
@@ -795,20 +791,15 @@
   let picked = [];
   $("u-files").addEventListener("change", (e) => {
     picked = Array.from(e.target.files || []);
-    if (uMode === "group") {
-      $("u-preview").innerHTML = ""; $("u-count").textContent = picked.length ? `${picked.length} photo${picked.length > 1 ? "s" : ""} added` : "You can pick several at once";
-      say("u-msg", ""); matchGroup(picked); return;
-    }
-    $("u-preview").innerHTML = picked.map((f) => `<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""></div>`).join("");
-    $("u-count").textContent = picked.length ? `${picked.length} photo${picked.length > 1 ? "s" : ""} ready` : "You can pick several at once";
-    say("u-msg", "");
-    updateUploadBtn();
+    if (!picked.length) return;
+    $("u-count").textContent = `${picked.length} photo${picked.length > 1 ? "s" : ""} added`;
+    say("u-msg", ""); matchGroup(picked);
   });
-  // ---------- group upload: match faces to children's profile photos, on this device ----------
-  let uMode = "one", gItems = [];   // gItems: { file, url, kids:Set, auto:Set, faces }
+  // ---------- upload: match faces to children's profile photos on this device, then file each photo ----------
+  let gItems = [];   // gItems: { file, url, kids:Set, faces }
   const FACE_LIB = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js";
   const FACE_MODELS = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model/";
-  const MATCH_MAX = 0.55;   // lower = stricter; children's faces are harder, so the teacher always reviews
+  const MATCH_MAX = 0.55;   // lower = stricter
   let faceReady = null;
   function loadFaceApi() {
     if (faceReady) return faceReady;
@@ -844,71 +835,52 @@
     }
     return out;
   }
-  function setMode(m) {
-    uMode = m;
-    $("u-mode").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === m));
-    $("u-child-wrap").hidden = m === "group";
-    $("u-hint").textContent = m === "group"
-      ? "Add photos of several children at once. Faces are matched on this phone to children with a profile photo and photo matching turned on; check the names before saving."
-      : "Photos are saved under the child and the date.";
-    picked = []; gItems = []; $("u-files").value = ""; $("u-preview").innerHTML = ""; $("g-review").innerHTML = ""; $("g-status").hidden = true;
-    $("u-count").textContent = "You can pick several at once"; say("u-msg", ""); updateUploadBtn();
-  }
-  $("u-mode").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setMode(b.dataset.v); });
   async function matchGroup(files) {
-    gItems = files.map((f) => ({ file: f, url: URL.createObjectURL(f), kids: new Set(), auto: new Set(), faces: null }));
+    gItems = files.map((f) => ({ file: f, url: URL.createObjectURL(f), kids: new Set(), faces: null }));
+    if (!$("u-date").value) $("u-date").value = today();
+    $("u-files").disabled = true; $("g-review").innerHTML = "";
     renderGroup();
     const status = (t) => { $("g-status").hidden = false; $("g-status").textContent = t; };
     const consented = children.filter((c) => c.photo_match_ok && c.profile_path).length;
-    if (!consented) { status("No children have photo matching turned on yet (Children → Edit → profile photo + consent). Pick the children for each photo below."); updateUploadBtn(); return; }
-    try {
-      status("Getting face matching ready… (the first time downloads about 12 MB)");
-      await loadFaceApi();
-      status("Reading profile photos…");
-      const refs = await profileDescriptors();
-      if (!refs.length) { status("Couldn't find a face in the profile photos. Pick the children for each photo below."); updateUploadBtn(); return; }
-      for (let i = 0; i < gItems.length; i++) {
-        status(`Matching faces… ${i + 1} of ${gItems.length}`);
-        const it = gItems[i];
-        const im = await loadImg(it.url);
-        const faces = await faceapi.detectAllFaces(im).withFaceLandmarks().withFaceDescriptors();
-        it.faces = faces.length;
-        for (const f of faces) {
-          let best = null, bestD = Infinity;
-          for (const r of refs) { const d = faceapi.euclideanDistance(f.descriptor, r.desc); if (d < bestD) { bestD = d; best = r.id; } }
-          if (best && bestD <= MATCH_MAX) { it.kids.add(best); it.auto.add(best); }
+    let note = "";
+    if (!consented) note = "No children have photo matching turned on yet (Children → Edit → profile photo + consent), so these went to Class photos.";
+    else {
+      try {
+        status("Getting face matching ready… (the first time downloads about 12 MB)");
+        await loadFaceApi();
+        status("Reading profile photos…");
+        const refs = await profileDescriptors();
+        if (!refs.length) note = "Couldn't find a face in the profile photos, so these went to Class photos.";
+        else for (let i = 0; i < gItems.length; i++) {
+          status(`Matching faces… ${i + 1} of ${gItems.length}`);
+          const it = gItems[i];
+          const im = await loadImg(it.url);
+          const faces = await faceapi.detectAllFaces(im).withFaceLandmarks().withFaceDescriptors();
+          it.faces = faces.length;
+          for (const f of faces) {
+            let best = null, bestD = Infinity;
+            for (const r of refs) { const d = faceapi.euclideanDistance(f.descriptor, r.desc); if (d < bestD) { bestD = d; best = r.id; } }
+            if (best && bestD <= MATCH_MAX) it.kids.add(best);
+          }
+          renderGroup();
         }
-        renderGroup();
+      } catch (e) {
+        note = `${e.message || "Face matching didn't work on this device."} These went to Class photos.`;
       }
-      const matched = gItems.filter((g) => g.kids.size).length;
-      status(`Matched ${matched} of ${gItems.length} photo${gItems.length > 1 ? "s" : ""}. Check the names (✓ = matched), add anyone missed, then save.`);
-    } catch (e) {
-      status(`${e.message || "Face matching didn't work on this device."} Pick the children for each photo below.`);
     }
-    updateUploadBtn();
+    gItems.forEach((g) => { if (g.faces == null) g.faces = -1; });
+    renderGroup();
+    $("g-status").hidden = true;
+    await saveGroup(note);
   }
   function renderGroup() {
-    $("g-review").innerHTML = gItems.map((g, i) => `<div class="g-card${g.faces === 0 || (g.faces != null && !g.kids.size) ? " none" : ""}"><img src="${g.url}" alt="">
-      <div><div class="faces">${g.faces == null ? "Checking…" : g.faces === 0 ? "No faces found, pick the children" : `${g.faces} face${g.faces > 1 ? "s" : ""} found${g.kids.size ? "" : ", no match, pick the children"}`}</div>
-      <div class="seg" data-gi="${i}">${children.map((c) => `<button type="button" data-v="${c.id}" class="${g.kids.has(c.id) ? "on" : ""}${g.auto.has(c.id) ? " auto" : ""}">${esc(c.name)}</button>`).join("")}</div></div></div>`).join("");
+    $("g-review").innerHTML = gItems.map((g) => {
+      const names = [...g.kids].map((id) => kidById(id)?.name).filter(Boolean);
+      const label = g.faces == null ? "Checking…" : names.length ? names.join(", ") : "Class photos";
+      return `<div class="g-card${g.faces != null && !names.length ? " pool" : ""}"><img src="${g.url}" alt="">
+        <div><div class="names">${esc(label)}</div>${g.faces > 0 ? `<div class="faces">${g.faces} face${g.faces > 1 ? "s" : ""} found</div>` : ""}</div></div>`;
+    }).join("");
   }
-  $("g-review").addEventListener("click", (e) => {
-    const b = e.target.closest("button"); const seg = e.target.closest("[data-gi]"); if (!b || !seg) return;
-    const g = gItems[+seg.dataset.gi]; g.kids.has(b.dataset.v) ? g.kids.delete(b.dataset.v) : g.kids.add(b.dataset.v);
-    b.classList.toggle("on", g.kids.has(b.dataset.v)); updateUploadBtn();
-  });
-
-  function updateUploadBtn() {
-    if (uMode === "group") {
-      const n = gItems.filter((g) => g.kids.size).length;
-      $("u-go").disabled = !n || !$("u-date").value;
-      $("u-go").textContent = n ? `Save ${n} photo${n > 1 ? "s" : ""}${n < gItems.length ? ` (${gItems.length - n} without a child skipped)` : ""}` : "Upload";
-      return;
-    }
-    $("u-go").disabled = !picked.length || !$("u-child").value || !$("u-date").value;
-    $("u-go").textContent = picked.length ? `Upload ${picked.length} photo${picked.length > 1 ? "s" : ""}` : "Upload";
-  }
-  ["u-child", "u-date"].forEach((id) => $(id).addEventListener("change", updateUploadBtn));
 
   // Shrink large camera photos before upload (keeps storage small, shares fast)
   async function shrink(file, max = 1600) {
@@ -923,55 +895,38 @@
     } catch { return file; }
   }
 
-  async function saveGroup() {
-    const day = $("u-date").value, items = gItems.filter((g) => g.kids.size);
-    $("u-go").disabled = true; $("u-prog").hidden = false;
+  // Matched photos go to each child's day (copies share a group_id); photos with no match go to the center's Class photos
+  async function saveGroup(note) {
+    const day = $("u-date").value || today(), items = gItems.slice();
+    $("u-prog").hidden = false;
     const bar = $("u-prog").firstElementChild; bar.style.width = "0";
-    const total = items.reduce((n, g) => n + g.kids.size, 0); let done = 0, failed = 0;
+    const total = items.reduce((n, g) => n + Math.max(1, g.kids.size), 0); let done = 0, failed = 0;
     for (const g of items) {
       const blob = await shrink(g.file), groupId = uuid();
-      for (const cid of g.kids) {
+      const targets = g.kids.size ? [...g.kids] : [null];
+      for (const cid of targets) {
         try {
-          const path = `${cid}/${day}/${uuid()}.jpg`;
+          const path = cid ? `${cid}/${day}/${uuid()}.jpg` : `pool/${centerId}/${day}/${uuid()}.jpg`;
           const up = await sb.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
           if (up.error) throw up.error;
-          const ins = await sb.from("photos").insert({ child_id: cid, taken_on: day, path, group_id: groupId });
+          const row = cid ? { child_id: cid, taken_on: day, path, group_id: groupId } : { child_id: null, center_id: centerId, taken_on: day, path, group_id: groupId };
+          const ins = await sb.from("photos").insert(row);
           if (ins.error) throw ins.error;
         } catch (err) { console.error(err); failed++; }
         done++; bar.style.width = (done / total) * 100 + "%";
       }
     }
     $("u-prog").hidden = true;
+    picked = []; $("u-files").value = ""; $("u-files").disabled = false; $("u-count").textContent = "Add more photos";
+    const matched = items.filter((g) => g.kids.size).length, pooled = items.length - matched;
     const kidsN = new Set(items.flatMap((g) => [...g.kids])).size;
-    setMode("group");
-    say("u-msg", failed ? "Some photos didn't save. Check your connection and try again." : `Saved ${items.length} photo${items.length > 1 ? "s" : ""} to ${kidsN} child${kidsN > 1 ? "ren" : ""}'s day · ${niceDate(day)}. Recognizing activities…`, failed ? "err" : "ok");
+    const parts = [];
+    if (matched) parts.push(`${matched} photo${matched > 1 ? "s" : ""} saved to ${kidsN} child${kidsN > 1 ? "ren" : ""}'s day`);
+    if (pooled) parts.push(`${pooled} with no match saved to Class photos`);
+    const msg = failed ? "Some photos didn't save. Check your connection and try those again." : `${parts.join(", ")} · ${niceDate(day)}.${note ? " " + note : ""} Recognizing activities…`;
+    say("u-msg", msg, failed ? "err" : "ok");
     if (!failed) analyzePhotos(day, true).then((m) => { if (m) say("u-msg", `${$("u-msg").textContent.replace(" Recognizing activities…", "")} Activities: ${m}`); });
   }
-  $("u-go").addEventListener("click", async () => {
-    if (uMode === "group") return saveGroup();
-    const childId = $("u-child").value, day = $("u-date").value;
-    const kid = children.find((c) => c.id === childId);
-    $("u-go").disabled = true; $("u-prog").hidden = false;
-    const bar = $("u-prog").firstElementChild; bar.style.width = "0";
-    let done = 0, failed = 0;
-    for (const f of picked) {
-      try {
-        const blob = await shrink(f);
-        const path = `${childId}/${day}/${uuid()}.jpg`;
-        const up = await sb.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
-        if (up.error) throw up.error;
-        const ins = await sb.from("photos").insert({ child_id: childId, taken_on: day, path });
-        if (ins.error) throw ins.error;
-      } catch (err) { console.error(err); failed++; }
-      done++; bar.style.width = (done / picked.length) * 100 + "%";
-    }
-    const ok = picked.length - failed;
-    picked = []; $("u-files").value = ""; $("u-preview").innerHTML = ""; $("u-count").textContent = "You can pick several at once";
-    $("u-prog").hidden = true; updateUploadBtn();
-    if (failed) say("u-msg", `${ok} uploaded, ${failed} failed. Check your connection and try those again.`, "err");
-    else say("u-msg", `${ok} photo${ok > 1 ? "s" : ""} saved for ${kid ? kid.name : "child"} · ${niceDate(day)}. Find them in Photos.`);
-    if (ok) analyzePhotos(day, true).then((m) => { if (m) say("u-msg", `${$("u-msg").textContent.trim()} Activities: ${m}`); });
-  });
 
   // ---------- photos library ----------
   let photos = [];               // all loaded rows, newest day first
@@ -987,7 +942,7 @@
 
   function renderFilter() {
     const keep = $("p-filter").value;
-    $("p-filter").innerHTML = `<option value="">All children</option>` + children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    $("p-filter").innerHTML = `<option value="">All children</option><option value="pool">Class photos (no match)</option>` + children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
     if (children.some((c) => c.id === keep)) $("p-filter").value = keep;
   }
   $("p-filter").addEventListener("change", () => { clearSelection(); renderLibrary(); });
@@ -1011,9 +966,9 @@
 
   function renderLibrary() {
     const only = $("p-filter").value;
-    const rows = photos.filter((p) => !only || p.child_id === only);
+    const rows = photos.filter((p) => !only || (only === "pool" ? !p.child_id : p.child_id === only));
     $("p-empty").hidden = rows.length > 0;
-    $("p-empty").textContent = only ? "No photos for this child yet." : "No photos yet. Use Upload to add the first ones.";
+    $("p-empty").textContent = only === "pool" ? "No class photos. Group photos with no matched child land here." : only ? "No photos for this child yet." : "No photos yet. Use Upload to add the first ones.";
     const days = new Map();
     rows.forEach((p) => {
       if (!days.has(p.taken_on)) days.set(p.taken_on, new Map());
@@ -1023,14 +978,15 @@
     });
     const dates = [...days.keys()].sort().reverse();
     $("p-list").innerHTML = dates.map((d) => {
-      const groups = [...days.get(d).entries()].sort((a, b) => (kidById(a[0])?.name || "").localeCompare(kidById(b[0])?.name || ""));
+      // children A–Z, then Class photos (child_id null) last
+      const groups = [...days.get(d).entries()].sort((a, b) => (a[0] == null) - (b[0] == null) || (kidById(a[0])?.name || "").localeCompare(kidById(b[0])?.name || ""));
       return `<div class="day"><h2>${esc(dayLabel(d))}</h2>` + groups.map(([cid, list]) => {
-        const kid = kidById(cid) || { name: "Unknown child" };
+        const kid = cid == null ? { name: "Class photos" } : kidById(cid) || { name: "Unknown child" };
         const sent = list.filter((p) => p.shared_at).length;
         const key = d + "|" + cid;
         return `<div class="group" data-key="${key}">
-          <div class="ghead"><div class="who"><div class="avatar">${esc((kid.name[0] || "?").toUpperCase())}</div>
-            <div><b>${esc(kid.name)}</b><span>${list.length} photo${list.length > 1 ? "s" : ""}${sent ? ` · ${sent} sent` : ""}</span></div></div>
+          <div class="ghead"><div class="who"><div class="avatar">${cid == null ? "👥" : esc((kid.name[0] || "?").toUpperCase())}</div>
+            <div><b>${esc(kid.name)}</b>${cid == null ? `<span style="display:block">No match · staff only</span>` : ""}<span>${list.length} photo${list.length > 1 ? "s" : ""}${sent ? ` · ${sent} sent` : ""}</span></div></div>
             <button class="link" data-all="${key}">Select all</button></div>
           <div class="thumbs">${list.map((p) => `<button class="thumb" data-id="${p.id}" aria-pressed="false"><img loading="lazy" src="${esc(urlFor.get(p.path) || "")}" alt="Photo of ${esc(kid.name)}"><span class="tick"></span>${p.shared_at ? '<span class="sent">Sent</span>' : ""}</button>`).join("")}</div>
         </div>`;
@@ -1111,11 +1067,35 @@
     });
     if (!n) return;
     const [d, cid] = groupKey.split("|"); const kid = kidById(cid);
-    $("sb-count").textContent = `${n} photo${n > 1 ? "s" : ""} of ${kid ? kid.name : "child"} · ${dayLabel(d)}`;
+    $("sb-count").textContent = kid ? `${n} photo${n > 1 ? "s" : ""} of ${kid.name} · ${dayLabel(d)}` : `${n} selected`;
     $("sb-tip").textContent = kid ? `Share → WhatsApp → ${kid.parent_name}'s chat` : "";
+    $("sb-move").hidden = cid !== "null";
+    $("sharebar").classList.toggle("pool", cid === "null");
+    if (cid === "null") $("sb-move").innerHTML = `<option value="">Move to…</option>` + children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
     $("sb-go").disabled = !ready;
     $("sb-label").textContent = ready ? "Share" : "Preparing…";
   }
+
+  // Class photos (no child matched): move the selected ones into a child's day so the parents see them
+  $("sb-move").addEventListener("change", async () => {
+    const cid = $("sb-move").value; if (!cid) return;
+    const kid = kidById(cid), ids = [...selected];
+    $("sb-move").disabled = true; let failed = 0;
+    for (const id of ids) {
+      const p = photos.find((x) => x.id === id);
+      try {
+        const { data: blob, error: e1 } = await sb.storage.from("photos").download(p.path); if (e1) throw e1;
+        const path = `${cid}/${p.taken_on}/${uuid()}.jpg`;
+        const up = await sb.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" }); if (up.error) throw up.error;
+        const upd = await sb.from("photos").update({ child_id: cid, path }).eq("id", id); if (upd.error) throw upd.error;
+        await sb.storage.from("photos").remove([p.path]);
+        urlFor.delete(p.path); files.delete(id); p.child_id = cid; p.path = path;
+      } catch (err) { console.error(err); failed++; }
+    }
+    $("sb-move").disabled = false;
+    clearSelection(); await loadLibrary();
+    say("p-msg", failed ? `${ids.length - failed} moved, ${failed} didn't. Try again.` : `Moved ${ids.length} photo${ids.length > 1 ? "s" : ""} to ${kid ? kid.name : "the child"}'s day.`, failed ? "err" : "ok");
+  });
 
   async function markShared(ids) {
     const now = new Date().toISOString();
@@ -1128,13 +1108,13 @@
     const ids = [...selected];
     const list = ids.map((id) => files.get(id));
     const [d, cid] = groupKey.split("|"); const kid = kidById(cid);
-    const text = kid ? `${kid.name}'s day at Sanora · ${niceDate(d)} 🌱` : "";
+    const text = kid ? `${kid.name}'s day at Sanora · ${niceDate(d)} 🌱` : `Our day at Sanora · ${niceDate(d)} 🌱`;
     say("p-msg", "");
     if (navigator.canShare && navigator.canShare({ files: list })) {
       try {
         await navigator.share({ files: list, text });
         await markShared(ids);
-        say("p-msg", `Shared with ${kid ? kid.parent_name : "the parent"}. Thanks!`);
+        say("p-msg", kid ? `Shared with ${kid.parent_name}. Thanks!` : "Shared. Thanks!");
       } catch (err) {
         if (err && err.name !== "AbortError") say("p-msg", "Sharing didn't work: " + err.message, "err");
       }

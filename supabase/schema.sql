@@ -83,6 +83,12 @@ create table if not exists public.photos (
 );
 create index if not exists photos_child_date on public.photos (child_id, taken_on);
 alter table public.photos add column if not exists group_id uuid;   -- copies of one group photo saved for several children share this
+-- Class photo pool: group photos with no matched child are kept for the center (child_id null, path pool/<center_id>/<date>/<uuid>.jpg)
+alter table public.photos add column if not exists center_id text references public.centers(id) on delete cascade;
+alter table public.photos alter column child_id drop not null;
+alter table public.photos drop constraint if exists photos_owner;
+alter table public.photos add constraint photos_owner check (child_id is not null or center_id is not null);
+create index if not exists photos_center_date on public.photos (center_id, taken_on) where child_id is null;
 
 -- Daily note (one per child per day): lunch, snack, bowel movement, nap, notes
 create table if not exists public.daily_notes (
@@ -197,12 +203,15 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- Storage paths start with the child id: <child_id>/<date>/<file>.jpg
+-- Class pool photos: pool/<center_id>/<date>/<file>.jpg (staff of that center only)
 create or replace function public.can_staff_path(object_name text)
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.children c
-    where c.id::text = split_part(object_name, '/', 1) and public.can_staff_center(c.center_id)
-  );
+  select case when split_part(object_name, '/', 1) = 'pool'
+    then public.can_staff_center(split_part(object_name, '/', 2))
+    else exists (
+      select 1 from public.children c
+      where c.id::text = split_part(object_name, '/', 1) and public.can_staff_center(c.center_id))
+  end;
 $$;
 
 -- Parents: a signed-in user whose email matches a child's parent_email or parent2_email
@@ -337,7 +346,9 @@ create policy "parent read own children" on public.children
 
 drop policy if exists "staff all photos" on public.photos;
 create policy "staff all photos" on public.photos
-  for all to authenticated using (public.can_staff_child(child_id)) with check (public.can_staff_child(child_id));
+  for all to authenticated
+  using      (case when child_id is null then public.can_staff_center(center_id) else public.can_staff_child(child_id) end)
+  with check (case when child_id is null then public.can_staff_center(center_id) else public.can_staff_child(child_id) end);
 drop policy if exists "parent read own photos" on public.photos;
 create policy "parent read own photos" on public.photos
   for select to authenticated using (public.is_parent_of(child_id));
