@@ -10,7 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Sanora">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Sanora · Teacher</title>
+<title>Sanora</title>
+<meta name="application-name" content="Sanora">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M32 60V34' stroke='%233f7d4e' stroke-width='4' stroke-linecap='round'/><path d='M32 44c-10 0-16-6-17-14 9 0 16 5 17 14z' fill='%2363a86f'/><path d='M32 40c10 0 16-6 17-14-9 0-16 5-17 14z' fill='%2363a86f'/><path d='M32 34c-7-4-8-14 0-26 8 12 7 22 0 26z' fill='%23e9849a'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Fraunces:opsz,wght@9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -585,7 +586,7 @@
     centerName = name || "";
     $("hdr-name").textContent = centerName || "Sanora";
     $("hdr-sub").hidden = !centerName;
-    document.title = centerName ? `${centerName} · Sanora` : "Sanora";
+    document.title = "Sanora";   // the home-screen name is always Sanora, whatever the center
     $("login-title").textContent = centerName ? `Sign in to ${centerName}` : "Sign in";
   }
   async function loadCenterName(id) {
