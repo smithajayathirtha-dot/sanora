@@ -64,6 +64,7 @@ create table if not exists public.children (
 alter table public.children add column if not exists parent_email text;
 alter table public.children add column if not exists parent2_email text;  -- optional second parent who can also sign in
 alter table public.children add column if not exists allergies text;    -- free text; empty = none known
+alter table public.children add column if not exists half_day boolean not null default false;  -- leaves after lunch (12:45): only morning activities
 alter table public.children add column if not exists profile_path text; -- storage path of the child's profile photo: <child_id>/profile/<file>.jpg
 alter table public.children add column if not exists photo_match_ok boolean not null default false; -- parent agreed to photo matching for group uploads
 alter table public.children add column if not exists center_id text references public.centers(id) on delete cascade;

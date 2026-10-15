@@ -17,6 +17,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || "https://fzuupmauwfgrbsmvsmrj.s
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_PIYNPbVjx1RlIdPOqVoO5g_Nr5mLlx7";
 const ANTHROPIC_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com") + "/v1/messages";
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+const HALF_DAY_END = "12:45";   // half-day children are picked up after lunch
 const MAX_PHOTOS = 20;
 // Tolerate a key pasted with spaces, a line break or surrounding quotes
 const RAW_KEY = (process.env.ANTHROPIC_API_KEY || "").trim().replace(/^["']|["']$/g, "").trim();
@@ -96,9 +97,12 @@ module.exports = async (req, res) => {
     const centers = await sbFetch(`/rest/v1/centers?select=schedule&id=eq.${encodeURIComponent(centerId)}`, token);
     const schedule = (centers && centers[0] && Array.isArray(centers[0].schedule)) ? centers[0].schedule : [];
     const slots = schedule.filter((b) => b.activity);
-    const kids = await sbFetch(`/rest/v1/children?select=id,name&center_id=eq.${encodeURIComponent(centerId)}`, token);
+    const kids = await sbFetch(`/rest/v1/children?select=id,name,half_day&center_id=eq.${encodeURIComponent(centerId)}`, token);
     if (!kids.length) return send(res, 200, { added: 0, activities: [], note: "No children in this center yet." });
     const nameOf = Object.fromEntries(kids.map((k) => [k.id, k.name]));
+    const halfDay = new Set(kids.filter((k) => k.half_day).map((k) => k.id));
+    // A photo showing only half-day children (picked up after lunch) belongs to a morning block
+    const onlyHalfDay = (p) => { const k = p.members.map((m) => m.child_id).filter(Boolean); return k.length > 0 && k.every((id) => halfDay.has(id)); };
     const ids = kids.map((k) => k.id).join(",");
     // The children's photos plus the center's class pool (group photos where no child was recognized)
     const who = `or=(child_id.in.(${ids}),and(child_id.is.null,center_id.eq.${encodeURIComponent(centerId)}))`;
@@ -128,7 +132,8 @@ module.exports = async (req, res) => {
     const content = [];
     usable.forEach((p, i) => {
       const who = [...new Set(p.members.map((m) => nameOf[m.child_id]).filter(Boolean))].join(", ") || "not identified (class photo)";
-      content.push({ type: "text", text: `Photo ${i + 1} (children: ${who}; uploaded at ${fmt12(localTime(p.created_at))})` });
+      const half = slots.length && onlyHalfDay(p) ? `; ${who} ${p.members.length > 1 ? "are" : "is"} on a half day (picked up at ${fmt12(HALF_DAY_END)}), so this is a morning activity` : "";
+      content.push({ type: "text", text: `Photo ${i + 1} (children: ${who}; uploaded at ${fmt12(localTime(p.created_at))}${half})` });
       content.push({ type: "image", source: { type: "url", url: urlFor[p.path] } });
     });
     const tool = makeTool(slots);
@@ -181,8 +186,14 @@ module.exports = async (req, res) => {
       const kind = KINDS.includes(a.kind) ? a.kind : "Other";
       let key, time;
       if (slots.length) {
-        const b = slots[(Number(a.block) || 0) - 1];
+        let b = slots[(Number(a.block) || 0) - 1];
         if (!b) continue;
+        // Half-day children are gone by the afternoon: move their photos' activity to the matching morning block
+        const ps0 = (a.photos || []).map((n) => usable[n - 1]).filter(Boolean);
+        if (hm(b.start) >= HALF_DAY_END && ps0.length && ps0.every(onlyHalfDay)) {
+          const am = slots.filter((x) => hm(x.start) < HALF_DAY_END);
+          b = am.find((x) => (x.kinds || []).includes(kind)) || am[am.length - 1] || b;
+        }
         if (existing.some((e) => inBlock(e.act_time, b) || (!e.act_time && (b.kinds || []).includes(e.kind) && e.kind === kind))) continue;
         key = "b" + b.start; time = hm(b.start);
       } else {

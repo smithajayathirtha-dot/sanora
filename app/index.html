@@ -481,6 +481,7 @@
           <input id="k-photo" type="file" accept="image/*" hidden>
           <span class="hint" id="k-photo-note" style="margin:0">A clear, front-facing photo of the child's face.</span>
         </div>
+        <label class="consent"><input type="checkbox" id="k-half"> <span><b>Half day</b>: picked up after lunch (12:45), so only morning activities count for this child.</span></label>
         <label class="consent"><input type="checkbox" id="k-consent"> <span>Parent agreed to <b>photo matching</b>: group photos are matched to this child's profile photo on the teacher's phone, so they land in this child's day. No face data is stored.</span></label>
         <button class="btn" type="submit" id="k-submit">Add child</button>
         <button class="btn ghost" type="button" id="k-cancel" hidden>Cancel</button>
@@ -537,6 +538,7 @@
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
   const niceDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const say = (el, text, kind = "ok") => { $(el).innerHTML = text ? `<div class="msg ${kind}">${esc(text)}</div>` : ""; };
+  const HALF_DAY_END = "12:45";   // half-day children are picked up after lunch
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) { show("setup"); return; }
@@ -737,7 +739,7 @@
   }
   function renderChildren() {
     $("k-list").innerHTML = children.length
-      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar${ppUrls[c.id] ? " photo" : ""}"${ppUrls[c.id] ? ` style="background-image:url('${esc(ppUrls[c.id])}')"` : ""}>${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b>${c.photo_match_ok && c.profile_path ? `<span class="match">✓ Photo matching on</span>` : ""}<span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}${c.parent2_email ? ` · ${esc(c.parent2_email)}` : ""}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}${c.allergies ? `<span class="allergy">⚠ Allergies: ${esc(c.allergies)}</span>` : `<span class="mail">No known allergies</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
+      ? children.map((c) => `<div class="kid"><div class="who"><div class="avatar${ppUrls[c.id] ? " photo" : ""}"${ppUrls[c.id] ? ` style="background-image:url('${esc(ppUrls[c.id])}')"` : ""}>${esc(c.name[0] || "?").toUpperCase()}</div><div><b>${esc(c.name)}</b>${c.half_day ? `<span class="match">Half day · until 12:45</span>` : ""}${c.photo_match_ok && c.profile_path ? `<span class="match">✓ Photo matching on</span>` : ""}<span>${esc(c.parent_name)} · ${esc(c.parent_phone)}</span>${c.parent_email ? `<span class="mail">${esc(c.parent_email)}${c.parent2_email ? ` · ${esc(c.parent2_email)}` : ""}</span>` : `<span class="mail missing">No parent email yet — tap Edit to add</span>`}${c.allergies ? `<span class="allergy">⚠ Allergies: ${esc(c.allergies)}</span>` : `<span class="mail">No known allergies</span>`}</div></div><button class="link edit" data-edit="${c.id}">Edit</button></div>`).join("")
       : `<div class="empty">No children yet. Add the first one below.</div>`;
     document.querySelectorAll(".child-select").forEach((sel) => {
       const keep = sel.value;
@@ -761,6 +763,7 @@
     $("k-name").value = c ? c.name : ""; $("k-parent").value = c ? c.parent_name : "";
     $("k-phone").value = c ? c.parent_phone : ""; $("k-email").value = c ? (c.parent_email || "") : ""; $("k-email2").value = c ? (c.parent2_email || "") : ""; $("k-allergies").value = c ? (c.allergies || "") : "";
     $("k-consent").checked = !!(c && c.photo_match_ok);
+    $("k-half").checked = !!(c && c.half_day);
     ppFile = null; $("k-photo").value = "";
     paintPp(c && ppUrls[c.id] ? ppUrls[c.id] : null, c ? c.name : "");
     $("k-form-title").textContent = c ? `Edit ${c.name}` : "Add a child";
@@ -783,7 +786,7 @@
     const email2 = $("k-email2").value.trim().toLowerCase();
     if (email2 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email2)) { say("k-msg", "Enter a valid second parent email, or leave it empty.", "err"); return; }
     if (email2 && email2 === email) { say("k-msg", "The second parent's email is the same as the first.", "err"); return; }
-    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email, parent2_email: email2 || null, allergies: $("k-allergies").value.trim() || null, photo_match_ok: $("k-consent").checked };
+    const row = { name: $("k-name").value.trim(), parent_name: $("k-parent").value.trim(), parent_phone: "+" + digits, parent_email: email, parent2_email: email2 || null, allergies: $("k-allergies").value.trim() || null, photo_match_ok: $("k-consent").checked, half_day: $("k-half").checked };
     const kidId = editingId || uuid();
     if (ppFile) {
       const blob = await shrink(ppFile, 800);
@@ -1678,7 +1681,7 @@
     $("tabs").hidden = true; $("signout").hidden = false; $("menu-wrap").hidden = true;
     show("parent");
     $("pa-list").innerHTML = `<div class="empty">Loading…</div>`;
-    const { data: kids, error } = await sb.from("children").select("id,name,center_id").order("name");
+    const { data: kids, error } = await sb.from("children").select("id,name,center_id,half_day").order("name");
     if (kids && kids[0] && kids[0].center_id) { centerId = kids[0].center_id; store.set("sanora-center", centerId); loadCenterName(centerId); }
     if (error) { $("pa-list").innerHTML = ""; say("pa-msg", error.message, "err"); return; }
     children = kids || [];
@@ -1712,7 +1715,9 @@
     const noteFor = new Map(notes.map((n) => [n.note_date + "|" + n.child_id, n]));
     const atts = attRows.filter((a) => !only || a.child_id === only);
     const attOf = new Map(atts.map((a) => [a.att_date + "|" + a.child_id, a]));
-    const actsFor = (d, cid) => paActs.filter((a) => a.act_date === d && (!a.child_ids || !a.child_ids.length || a.child_ids.includes(cid)) && kidById(cid) && kidById(cid).center_id === a.center_id)
+    // Half-day children leave after lunch: afternoon activities aren't theirs
+    const inDay = (a, cid) => !(kidById(cid) && kidById(cid).half_day && a.act_time && hm(a.act_time) >= HALF_DAY_END);
+    const actsFor = (d, cid) => paActs.filter((a) => a.act_date === d && (!a.child_ids || !a.child_ids.length || a.child_ids.includes(cid)) && kidById(cid) && kidById(cid).center_id === a.center_id && inDay(a, cid))
       .sort((x, y) => String(x.act_time || "").localeCompare(String(y.act_time || "")));
     const myKidIds = children.filter((c) => !only || c.id === only).map((c) => c.id);
     const actDates = paActs.filter((a) => myKidIds.some((cid) => actsFor(a.act_date, cid).length)).map((a) => a.act_date);

@@ -56,8 +56,12 @@ outdoor play, sensory play, learning, other), an optional title, time and detail
 whole class or some children. The list below the form has its own date picker for looking at past days.
 Parents see each day's activities in their child's day, only the ones their child took part in.
 
+**Half day:** Children → Edit → **Half day** marks a child who is picked up after lunch (12:45). Their parents don't see
+afternoon activities, and activities recognized from photos of only half-day children go in morning blocks.
+
 **Re-timing older activities:** `supabase/retime-activities.sql` moves existing activities to their typical-day block's start
-time (e.g. a story at 9:10 → 9:00 Circle time, outdoor play at 4:20 → 4:00). Run it once in the SQL Editor.
+time (e.g. a story at 9:10 → 9:00 Circle time, outdoor play at 4:20 → 4:00); activities only for half-day children go to
+morning blocks. It also turns on Half day for Sanmay. Run it in the SQL Editor after `schema.sql`.
 
 ## Typical day
 The center page has an **A typical day** section and a **Download the schedule (PDF)** link (`smiles-and-imagination/typical-day.pdf`).
