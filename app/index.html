@@ -550,6 +550,15 @@
   const show = (v) => views.forEach((x) => ($("v-" + x).hidden = x !== v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+  // No future dates anywhere: every date box stops at today (re-checked when the app comes back, e.g. after midnight)
+  function capDates() { const t = today(); document.querySelectorAll('input[type="date"]').forEach((el) => { el.max = t; }); }
+  capDates();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) capDates(); });
+  // Typed or picked past the limit (some browsers allow it): snap back to today
+  document.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.matches && el.matches('input[type="date"]') && el.value && el.value > today()) { el.value = today(); el.dispatchEvent(new Event("input", { bubbles: true })); }
+  }, true);
   const niceDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const say = (el, text, kind = "ok") => { $(el).innerHTML = text ? `<div class="msg ${kind}">${esc(text)}</div>` : ""; };
   const HALF_DAY_END = "12:45";   // half-day children are picked up after lunch
