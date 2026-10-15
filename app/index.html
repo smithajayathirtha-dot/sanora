@@ -114,6 +114,14 @@
   .msg-item.unread .meta b::after{content:"New";margin-left:8px;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:var(--petal);border-radius:999px;padding:1px 6px;vertical-align:1px}
   .pm-head{display:flex;align-items:center;justify-content:space-between}
   .pm-new{background:var(--petal);color:#fff;font-weight:800;font-size:.75rem;border-radius:999px;padding:2px 9px}
+  .pm-none{color:var(--muted);font-size:.92rem;padding:6px 0 2px}
+  .pa-dayhead{margin:26px 0 8px;font-size:1.3rem}
+  .pa-daybar{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+  .pa-daybar input{flex:1;min-width:0;margin:0;padding:9px 10px;font-size:.95rem}
+  .pa-daybar .nav{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:1.1rem;cursor:pointer;color:var(--ink)}
+  .pa-daybar .nav:disabled{opacity:.35;cursor:default}
+  .pa-sec{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;font-weight:700}
+  .pa-none{color:var(--muted);font-size:.9rem}
   .ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .ai-btn{display:inline-flex;align-items:center;gap:6px;background:#efe7fb;color:#5b3c9b;flex:none}
   .ai-btn svg{width:16px;height:16px}
@@ -382,8 +390,8 @@
   <!-- Parent view -->
   <section id="v-parent" hidden>
     <h1 id="pa-title">Your child's photos</h1>
-    <p class="hint">Daily notes and photos from your child's teachers. Tap a photo to see it full size or save it.<a id="pa-day" class="day-link" target="_blank" rel="noopener" hidden>A typical day ↗</a></p>
-    <div class="card pm-card" id="pm-card" hidden>
+    <p class="hint">Pick a day to see check-in, the daily note, activities and photos. Tap a photo to see it full size or save it.<a id="pa-day" class="day-link" target="_blank" rel="noopener" hidden>A typical day ↗</a></p>
+    <div class="card pm-card" id="pm-card">
       <div class="pm-head"><h2 class="ftitle">Messages</h2><span class="pm-new" id="pm-new" hidden></span></div>
       <div id="pm-list"></div>
       <button class="link" id="pm-more" type="button" hidden>Show older messages</button>
@@ -409,9 +417,15 @@
       <button class="btn" id="att-save" type="button">Check in</button>
       <div id="att-msg"></div>
     </div>
+    <h2 class="pa-dayhead" id="pa-day-title">Today</h2>
+    <div class="pa-daybar">
+      <button class="nav" id="pa-prev" type="button" aria-label="Earlier day with updates">‹</button>
+      <input id="pa-date" type="date" aria-label="Pick a day">
+      <button class="nav" id="pa-next" type="button" aria-label="Later day with updates">›</button>
+    </div>
     <select id="pa-filter" aria-label="Show photos for" hidden></select>
     <div id="pa-list"></div>
-    <div class="empty" id="pa-empty" hidden>Nothing yet. Daily notes and photos will appear here as soon as a teacher adds them.</div>
+    <div class="empty" id="pa-empty" hidden></div>
     <div id="pa-msg"></div>
   </section>
 
@@ -1653,8 +1667,7 @@
   let pmShowAll = false, pmRows = [];
   async function loadParentMessages() {
     const { data, error } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(50);
-    if (error) { $("pm-card").hidden = true; return; }
-    pmRows = data || [];
+    pmRows = error ? [] : (data || []);
     const myEmail = (me && me.email || "").toLowerCase();
     const { data: mine } = pmRows.length ? await sb.from("message_reads").select("message_id").in("message_id", pmRows.map((m) => m.id)) : { data: [] };
     const readSet = new Set((mine || []).map((r) => r.message_id));
@@ -1665,11 +1678,10 @@
     }
   }
   function renderParentMessages(readSet) {
-    $("pm-card").hidden = !pmRows.length;
     const unreadN = pmRows.filter((m) => !readSet.has(m.id)).length;
     $("pm-new").hidden = !unreadN; $("pm-new").textContent = `${unreadN} new`;
     const shown = pmShowAll ? pmRows : pmRows.slice(0, 3);
-    $("pm-list").innerHTML = shown.map((m) => `<div class="msg-item${readSet.has(m.id) ? "" : " unread"}"><div class="meta"><b>${esc(m.sender_name || "Your center")}</b><span>${esc(whenText(m.created_at))}</span></div><p>${esc(m.body)}</p>${m.child_ids && m.child_ids.length ? `<div class="foot"><span class="to">About ${esc(m.child_ids.map((id) => kidById(id)?.name).filter(Boolean).join(", ") || "your child")}</span></div>` : ""}</div>`).join("");
+    $("pm-list").innerHTML = (unreadN ? "" : `<div class="pm-none">No new messages</div>`) + shown.map((m) => `<div class="msg-item${readSet.has(m.id) ? "" : " unread"}"><div class="meta"><b>${esc(m.sender_name || "Your center")}</b><span>${esc(whenText(m.created_at))}</span></div><p>${esc(m.body)}</p>${m.child_ids && m.child_ids.length ? `<div class="foot"><span class="to">About ${esc(m.child_ids.map((id) => kidById(id)?.name).filter(Boolean).join(", ") || "your child")}</span></div>` : ""}</div>`).join("");
     $("pm-more").hidden = pmShowAll || pmRows.length <= 3;
     $("pm-card").dataset.read = JSON.stringify([...readSet]);
   }
@@ -1721,26 +1733,42 @@
       .sort((x, y) => String(x.act_time || "").localeCompare(String(y.act_time || "")));
     const myKidIds = children.filter((c) => !only || c.id === only).map((c) => c.id);
     const actDates = paActs.filter((a) => myKidIds.some((cid) => actsFor(a.act_date, cid).length)).map((a) => a.act_date);
-    const dates = [...new Set([...photos.map((p) => p.taken_on), ...notes.map((n) => n.note_date), ...atts.map((a) => a.att_date), ...actDates])].sort().reverse();
-    $("pa-empty").hidden = dates.length > 0;
+    // Days that have anything; ‹ › jump between them, the date box picks any day
+    const dates = [...new Set([...photos.map((p) => p.taken_on), ...notes.map((n) => n.note_date), ...atts.map((a) => a.att_date), ...actDates])].sort();
+    paDates = dates;
+    if (!$("pa-date").value) $("pa-date").value = today();
+    const d = $("pa-date").value;
+    $("pa-day-title").textContent = dayLabel(d);
+    $("pa-prev").disabled = !dates.some((x) => x < d);
+    $("pa-next").disabled = !dates.some((x) => x > d);
     const many = children.length > 1;
-    $("pa-list").innerHTML = dates.map((d) => {
-      const kidIds = [...new Set([...photos.filter((p) => p.taken_on === d).map((p) => p.child_id), ...notes.filter((n) => n.note_date === d).map((n) => n.child_id), ...atts.filter((a) => a.att_date === d).map((a) => a.child_id), ...myKidIds.filter((cid) => actsFor(d, cid).length)])]
-        .sort((a, b) => (kidById(a)?.name || "").localeCompare(kidById(b)?.name || ""));
-      return `<div class="day"><h2>${esc(dayLabel(d))}</h2>` + kidIds.map((cid) => {
-        const ps = photos.filter((p) => p.taken_on === d && p.child_id === cid);
-        const note = noteFor.get(d + "|" + cid);
-        const kid = kidById(cid);
-        const head = many && kid ? `<div class="ghead" style="margin-bottom:10px"><div class="who"><div class="avatar">${esc((kid.name[0] || "?").toUpperCase())}</div><div><b>${esc(kid.name)}</b>${ps.length ? `<span>${ps.length} photo${ps.length > 1 ? "s" : ""}</span>` : ""}</div></div></div>` : "";
-        const thumbs = ps.length ? `<div class="thumbs" style="${note ? "" : "margin-top:0"}">${ps.map((p) => `<button class="thumb" data-pid="${p.id}"><img loading="lazy" src="${esc(paUrls.get(p.path) || "")}" alt="Photo"></button>`).join("")}</div>` : "";
-        const a = attOf.get(d + "|" + cid);
-        const attline = a ? `<div class="attline"><div><span>In</span> <b>${a.check_in ? fmtTime(a.check_in) : "—"}</b></div><div><span>Out</span> <b>${a.check_out ? fmtTime(a.check_out) : "—"}</b></div></div>` : "";
-        const acts = actsFor(d, cid);
-        const actsHtml = acts.length ? `<div class="pa-acts"><h3>Activities</h3>${acts.map((a) => actItem(a, false)).join("")}</div>` : "";
-        return `<div class="group">${head}${attline}${note ? noteHtml(note) : ""}${actsHtml}${thumbs}</div>`;
-      }).join("") + `</div>`;
+    const html = myKidIds.map((cid) => {
+      const kid = kidById(cid);
+      const ps = photos.filter((p) => p.taken_on === d && p.child_id === cid);
+      const note = noteFor.get(d + "|" + cid);
+      const a = attOf.get(d + "|" + cid);
+      const acts = actsFor(d, cid);
+      if (!ps.length && !note && !a && !acts.length) return "";
+      const head = many && kid ? `<div class="ghead" style="margin-bottom:10px"><div class="who"><div class="avatar">${esc((kid.name[0] || "?").toUpperCase())}</div><div><b>${esc(kid.name)}</b></div></div></div>` : "";
+      const attline = `<div class="pa-sec" style="margin-top:0">Check-in / out</div>` + (a ? `<div class="attline"><div><span>In</span> <b>${a.check_in ? fmtTime(a.check_in) : "—"}</b></div><div><span>Out</span> <b>${a.check_out ? fmtTime(a.check_out) : "—"}</b></div></div>` : `<div class="pa-none">Not recorded</div>`);
+      const noteSec = note ? noteHtml(note) : `<div class="pa-sec">Daily note</div><div class="pa-none">No note yet</div>`;
+      const actsHtml = acts.length ? `<div class="pa-acts"><h3>Activities</h3>${acts.map((x) => actItem(x, false)).join("")}</div>` : `<div class="pa-sec">Activities</div><div class="pa-none">None logged</div>`;
+      const thumbs = `<div class="pa-sec">Photos${ps.length ? ` · ${ps.length}` : ""}</div>` + (ps.length ? `<div class="thumbs" style="margin-top:0">${ps.map((p) => `<button class="thumb" data-pid="${p.id}"><img loading="lazy" src="${esc(paUrls.get(p.path) || "")}" alt="Photo"></button>`).join("")}</div>` : `<div class="pa-none">No photos</div>`);
+      return `<div class="group">${head}${attline}${noteSec}${actsHtml}${thumbs}</div>`;
     }).join("");
+    $("pa-list").innerHTML = html;
+    $("pa-empty").hidden = !!html;
+    $("pa-empty").textContent = d === today() ? "Nothing for today yet. Check-in, the daily note, activities and photos show up here as the teachers add them." : `Nothing recorded on ${niceDate(d)}.`;
   }
+  $("pa-date").addEventListener("change", renderParent);
+  let paDates = [];
+  function paJump(dir) {
+    const d = $("pa-date").value || today();
+    const next = dir < 0 ? paDates.filter((x) => x < d).pop() : paDates.find((x) => x > d);
+    if (next) { $("pa-date").value = next; renderParent(); }
+  }
+  $("pa-prev").addEventListener("click", () => paJump(-1));
+  $("pa-next").addEventListener("click", () => paJump(1));
   $("pa-list").addEventListener("click", (e) => {
     const b = e.target.closest("[data-pid]"); if (!b) return;
     lbPhoto = paPhotos.find((p) => p.id === b.dataset.pid);

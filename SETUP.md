@@ -46,8 +46,8 @@ Bottom tabs, in order: **Check-in · Daily note · Activities · Upload · Photo
 
 ## Messages
 Heads and teachers open **☰ → Messages**, choose **All families** or **Select children**, write the message and tap **Send**.
-Parents see messages at the top of their screen (the 3 newest, with "Show older messages"); new ones are highlighted and
-marked read once shown. The Sent list shows who it went to and "Read by X of Y parents"; messages can be deleted.
+Parents always see a Messages card at the top of their screen ("No new messages" when there's nothing new; the 3 newest,
+with "Show older messages"); new ones are highlighted and marked read once shown. The Sent list shows who it went to and "Read by X of Y parents"; messages can be deleted.
 Parents only see messages for everyone at their center or for their own child; they can't send messages.
 
 ## Activities
@@ -139,7 +139,8 @@ Teachers see every child's entries for any date in the **Check-in** tab: times, 
 
 ## Parent sign-in
 Parents tap **Sign in** on their center's page and sign in with the email the teacher entered.
-They only see photos of their own children, organized by day. They can tap a photo to view it full size and save it.
+They see one day at a time (today by default): check-in/out, daily note, activities and photos. ‹ › jump to the
+previous/next day with updates, and the date box picks any day. They only see their own children. They can tap a photo to view it full size and save it.
 The database enforces this: a parent's account can't read any other child's rows or files.
 
 - **Gmail parents**: "Sign in with Google". This works with no extra setup.
