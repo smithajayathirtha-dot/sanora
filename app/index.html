@@ -171,6 +171,10 @@
   .att .t small{display:block;font-weight:400;color:var(--muted);font-size:.82rem}
   .att img{height:40px;max-width:120px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}
   .att .none{color:var(--muted);font-weight:400}
+  .att .rec{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+  .att .rec input{width:auto;margin:0;padding:7px 8px;font-size:.88rem}
+  .att .rec .btn{width:auto;margin:0;padding:8px 12px;font-size:.85rem}
+  .att .staff{font-size:.72rem;font-weight:700;color:var(--leaf);background:var(--leaf-soft);border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px}
   .attline{display:flex;gap:16px;flex-wrap:wrap;font-size:.92rem;color:var(--ink);background:var(--petal-soft);border-radius:12px;padding:8px 12px;margin-bottom:10px}
   .attline span{color:var(--muted)}
   textarea{width:100%;font:inherit;font-size:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);resize:vertical}
@@ -189,6 +193,10 @@
   .nstat .ok{color:var(--leaf);font-weight:700;font-size:.88rem}
   .nstat .no{color:var(--muted);font-size:.88rem}
   div.nstat{cursor:default}
+  .nstat .gate{color:var(--muted);font-size:.85rem;font-style:italic}
+  .n-gate{display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--petal-soft);border-radius:14px;padding:12px 14px;margin-top:12px;font-size:.92rem}
+  .n-gate .btn{flex:none;width:auto;margin:0}
+  #n-card.locked{opacity:.45;pointer-events:none}
   .view-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
   .view-head .ftitle{margin:0}
   .view-date{display:flex;align-items:center;gap:6px}
@@ -289,7 +297,7 @@
   <!-- Attendance (teacher) -->
   <section id="v-att" hidden>
     <h1>Check-in / out</h1>
-    <p class="hint">Drop-off and pick-up entries signed by parents.</p>
+    <p class="hint">Drop-off and pick-up entries signed by parents. If a parent forgets, record it here.</p>
     <label for="ta-date">Date</label>
     <input id="ta-date" type="date">
     <p class="hint" id="ta-sum" style="margin:14px 0 10px"></p>
@@ -358,11 +366,13 @@
   <!-- Daily note -->
   <section id="v-notes" hidden>
     <h1>Daily note</h1>
-    <p class="hint" id="n-date-label"></p>
+    <div class="view-head" style="margin:4px 0 2px"><p class="hint" id="n-date-label" style="margin:0"></p>
+      <div class="view-date"><input id="n-view" type="date" aria-label="Note date"><button class="link" id="n-view-today" type="button" hidden>Today</button></div></div>
     <label for="n-child">Child</label>
     <select id="n-child" class="child-select"></select>
     <div class="allergy-banner" id="n-allergy" hidden></div>
-    <div class="card" style="margin-top:14px">
+    <div class="n-gate" id="n-gate" hidden><span id="n-gate-text"></span><button class="btn small" id="n-gate-go" type="button">Go to Check-in</button></div>
+    <div class="card" id="n-card" style="margin-top:14px">
       <div class="q"><span>Lunch</span><div class="seg" data-f="lunch">
         <button type="button" data-v="none">No</button><button type="button" data-v="some">Ate some</button><button type="button" data-v="most">Ate most</button><button type="button" data-v="all">Ate all</button></div></div>
       <div class="q"><span>Snack</span><div class="seg" data-f="snack">
@@ -381,8 +391,7 @@
       <div id="n-msg"></div>
     </div>
     <div class="card">
-      <div class="view-head"><h2 class="ftitle" id="n-view-title">Today's notes</h2>
-        <div class="view-date"><input id="n-view" type="date" aria-label="Show notes for date"><button class="link" id="n-view-today" type="button" hidden>Today</button></div></div>
+      <div class="view-head"><h2 class="ftitle" id="n-view-title">Today's notes</h2></div>
       <div id="n-status"></div>
       <div id="n-view-list"></div>
     </div>
@@ -1184,38 +1193,36 @@
     const m = (me && me.user_metadata) || {};
     return m.full_name || m.name || (me && me.email ? me.email.split("@")[0] : "");
   };
-  let viewNotes = new Map();
+  // One date drives the whole screen: the form (any past day can be edited) and the list below
+  let dayAtt = new Map();
+  const nDate = () => $("n-view").value || today();
   async function loadNotes() {
-    $("n-date-label").textContent = `Today · ${niceDate(today())}`;
     if (!$("n-view").value) $("n-view").value = today();
-    const { data, error } = await sb.from("daily_notes").select("*").eq("note_date", today());
-    if (error) { say("n-msg", error.message, "err"); return; }
-    todayNotes = new Map((data || []).map((n) => [n.child_id, n]));
-    fillNoteForm(); await loadViewNotes();
+    const d = nDate();
+    $("n-date-label").textContent = d === today() ? `Today · ${niceDate(d)}` : niceDate(d);
+    $("n-view-today").hidden = d === today();
+    const [nr, ar] = await Promise.all([
+      sb.from("daily_notes").select("*").eq("note_date", d),
+      sb.from("attendance").select("child_id,check_in,check_out").eq("att_date", d)
+    ]);
+    if (nr.error) { say("n-msg", nr.error.message, "err"); return; }
+    todayNotes = new Map((nr.data || []).map((n) => [n.child_id, n]));
+    dayAtt = new Map(((ar && ar.data) || []).map((r) => [r.child_id, r]));
+    fillNoteForm(); renderNoteStatus();
   }
-  // The notes list below the form: any date (today's rows can be tapped to edit)
-  async function loadViewNotes() {
-    const d = $("n-view").value || today();
-    if (d === today()) viewNotes = todayNotes;
-    else {
-      const { data, error } = await sb.from("daily_notes").select("*").eq("note_date", d);
-      if (error) { say("n-msg", error.message, "err"); return; }
-      viewNotes = new Map((data || []).map((n) => [n.child_id, n]));
-    }
-    renderNoteStatus();
-  }
+  const checkedIn = (cid) => !!(dayAtt.get(cid) && dayAtt.get(cid).check_in);
   function renderNoteStatus() {
-    const d = $("n-view").value || today(), isToday = d === today();
+    const d = nDate(), isToday = d === today();
     $("n-view-title").textContent = isToday ? "Today's notes" : `Notes · ${niceDate(d)}`;
-    $("n-view-today").hidden = isToday;
     $("n-status").innerHTML = children.length ? children.map((c) => {
-      const st = viewNotes.has(c.id) ? '<span class="ok">✓ Saved</span>' : `<span class="no">${isToday ? "Not yet" : "No note"}</span>`;
-      return isToday ? `<button class="nstat" data-kid="${c.id}"><b>${esc(c.name)}</b>${st}</button>` : `<div class="nstat"><b>${esc(c.name)}</b>${st}</div>`;
+      const st = todayNotes.has(c.id) ? '<span class="ok">✓ Saved</span>' : checkedIn(c.id) ? '<span class="no">Not yet</span>' : '<span class="gate">Not checked in</span>';
+      return `<button class="nstat" data-kid="${c.id}"><b>${esc(c.name)}</b>${st}</button>`;
     }).join("") : `<div class="empty">Add children first.</div>`;
-    $("n-view-list").innerHTML = children.filter((c) => viewNotes.has(c.id)).map((c) => `<div class="nview"><b>${esc(c.name)}</b>${noteHtml(viewNotes.get(c.id))}</div>`).join("");
+    $("n-view-list").innerHTML = children.filter((c) => todayNotes.has(c.id)).map((c) => `<div class="nview"><b>${esc(c.name)}</b>${noteHtml(todayNotes.get(c.id))}</div>`).join("");
   }
-  $("n-view").addEventListener("change", loadViewNotes);
-  $("n-view-today").addEventListener("click", () => { $("n-view").value = today(); loadViewNotes(); });
+  $("n-view").addEventListener("change", () => { say("n-msg", ""); loadNotes(); });
+  $("n-view-today").addEventListener("click", () => { $("n-view").value = today(); say("n-msg", ""); loadNotes(); });
+  $("n-gate-go").addEventListener("click", () => { $("ta-date").value = nDate(); go("att"); });
   $("n-status").addEventListener("click", (e) => {
     const b = e.target.closest("[data-kid]"); if (!b) return;
     $("n-child").value = b.dataset.kid; fillNoteForm(); say("n-msg", "");
@@ -1223,14 +1230,21 @@
   });
   $("n-child").addEventListener("change", () => { fillNoteForm(); say("n-msg", ""); });
   function fillNoteForm() {
-    const kidA = children.find((c) => c.id === $("n-child").value);
+    const cid = $("n-child").value;
+    const kidA = children.find((c) => c.id === cid);
     $("n-allergy").hidden = !(kidA && kidA.allergies);
     if (kidA && kidA.allergies) $("n-allergy").textContent = `⚠ ${kidA.name}'s allergies: ${kidA.allergies}`;
-    const n = todayNotes.get($("n-child").value) || {};
+    // No daily note until the child is checked in that day
+    const locked = !!cid && !checkedIn(cid);
+    $("n-gate").hidden = !locked;
+    if (locked) $("n-gate-text").textContent = `${kidA ? kidA.name : "This child"} isn't checked in ${nDate() === today() ? "today" : "on " + niceDate(nDate())}. Check in first, then add the note.`;
+    $("n-card").classList.toggle("locked", locked);
+    $("n-save").disabled = locked;
+    const n = todayNotes.get(cid) || {};
     noteState = { lunch: n.lunch ?? null, snack: n.snack ?? null, bowel: n.bowel ?? null, nap: n.nap ?? null };
     $("n-times").value = n.bowel_times ?? ""; $("n-slept").value = n.nap_duration || "";
     $("n-notes").value = n.notes || ""; $("n-teacher").value = n.teacher_name || teacherName();
-    $("n-save").textContent = todayNotes.has($("n-child").value) ? "Update note" : "Save note";
+    $("n-save").textContent = todayNotes.has(cid) ? "Update note" : "Save note";
     paintSegs();
   }
   function paintSegs() {
@@ -1248,9 +1262,11 @@
   }));
   $("n-save").addEventListener("click", async () => {
     const childId = $("n-child").value; if (!childId) return;
+    if (!checkedIn(childId)) { fillNoteForm(); return; }
+    const d = nDate();
     const times = parseInt($("n-times").value, 10);
     const row = {
-      child_id: childId, note_date: today(),
+      child_id: childId, note_date: d,
       lunch: noteState.lunch, snack: noteState.snack,
       bowel: noteState.bowel, bowel_times: noteState.bowel === true && times > 0 ? times : null,
       nap: noteState.nap, nap_duration: noteState.nap === true ? ($("n-slept").value.trim() || null) : null,
@@ -1264,11 +1280,8 @@
     $("n-save").disabled = false;
     if (error) { say("n-msg", error.message, "err"); return; }
     const kid = kidById(childId);
-    say("n-msg", `Saved ${kid ? kid.name + "'s" : "the"} note. Parents can see it now.`);
-    const { data } = await sb.from("daily_notes").select("*").eq("note_date", today());
-    todayNotes = new Map((data || []).map((n) => [n.child_id, n]));
-    $("n-view").value = today(); await loadViewNotes();
-    $("n-save").textContent = "Update note";
+    await loadNotes();
+    say("n-msg", `Saved ${kid ? kid.name + "'s" : "the"} note${d === today() ? "" : " for " + niceDate(d)}. Parents can see it now.`);
   });
   function noteHtml(n) {
     const rows = [];
@@ -1507,15 +1520,47 @@
     const inNow = children.filter((c) => by.get(c.id)?.check_in && !by.get(c.id)?.check_out).length;
     const came = children.filter((c) => by.get(c.id)?.check_in).length;
     $("ta-sum").textContent = children.length ? `${came} of ${children.length} checked in · ${inNow} here now` : "Add children first.";
-    const cell = (r, k, label) => r && r[k]
-      ? `<div class="k">${label}</div><div class="t">${fmtTime(r[k])}<small>${esc(r[k + "_name"] || "")}</small></div>${r[k + "_sig"] ? `<img src="${esc(r[k + "_sig"])}" alt="Signature of ${esc(r[k + "_name"] || "parent")}">` : "<span></span>"}`
-      : `<div class="k">${label}</div><div class="t none">Not yet</div><span></span>`;
+    taRows = by;
+    const isToday = $("ta-date").value === today();
+    // Missing entries can be recorded by staff; recorded ones can be changed
+    const editor = (cid, kind, val) => `<div class="rec"><input type="time" data-time="${kind}" data-kid="${cid}" value="${val || (isToday ? nowTime() : "")}" aria-label="${kind === "check_in" ? "Check-in" : "Check-out"} time"><button class="btn small" data-rec="${kind}" data-kid="${cid}" type="button">${val ? "Save" : kind === "check_in" ? "Check in" : "Check out"}</button></div>`;
+    const cell = (c, r, k, label) => {
+      if (taEditing === c.id + "|" + k) return `<div class="k">${label}</div><div class="t none">${r && r[k] ? "Change time" : "Record time"}</div>${editor(c.id, k, r && r[k] ? hm(r[k]) : "")}`;
+      if (r && r[k]) {
+        const byStaff = !r[k + "_sig"];
+        return `<div class="k">${label}</div><div class="t">${fmtTime(r[k])}${byStaff ? '<span class="staff">Staff</span>' : ""}<small>${esc(r[k + "_name"] || "")} · <button class="link" data-edit-att="${c.id}|${k}" style="font-size:.82rem">Change</button></small></div>${r[k + "_sig"] ? `<img src="${esc(r[k + "_sig"])}" alt="Signature of ${esc(r[k + "_name"] || "parent")}">` : "<span></span>"}`;
+      }
+      if (k === "check_out" && !(r && r.check_in)) return `<div class="k">${label}</div><div class="t none">Not yet</div><span></span>`;
+      return `<div class="k">${label}</div><div class="t none">Not yet</div>${editor(c.id, k, "")}`;
+    };
     $("ta-list").innerHTML = children.map((c) => {
       const r = by.get(c.id);
       return `<div class="card"><div class="ghead" style="margin-bottom:6px"><div class="who"><div class="avatar">${esc((c.name[0] || "?").toUpperCase())}</div><div><b>${esc(c.name)}</b><span>${esc(c.parent_name)}</span></div></div>${r ? `<button class="link" data-clear="${r.id}" data-name="${esc(c.name)}" style="color:var(--danger)">Clear</button>` : ""}</div>
-        <div class="att">${cell(r, "check_in", "In")}</div><div class="att">${cell(r, "check_out", "Out")}</div></div>`;
+        <div class="att">${cell(c, r, "check_in", "In")}</div><div class="att">${cell(c, r, "check_out", "Out")}</div></div>`;
     }).join("");
   }
+  let taRows = new Map(), taEditing = null;
+  // Staff record a missed check-in/out (or fix a time); saved with the teacher's name and no signature
+  $("ta-list").addEventListener("click", async (e) => {
+    const ed = e.target.closest("[data-edit-att]");
+    if (ed) { taEditing = ed.dataset.editAtt; loadTeacherAtt(); return; }
+    const b = e.target.closest("[data-rec]"); if (!b) return;
+    const cid = b.dataset.kid, k = b.dataset.rec, kid = kidById(cid);
+    const t = $("ta-list").querySelector(`[data-time="${k}"][data-kid="${cid}"]`).value;
+    if (!t) { $("ta-sum").textContent = "Pick a time first."; return; }
+    const r = taRows.get(cid) || {};
+    if (k === "check_out" && r.check_in && t <= hm(r.check_in)) { $("ta-sum").textContent = `Check-out has to be after check-in (${fmtTime(r.check_in)}).`; return; }
+    if (k === "check_in" && r.check_out && t >= hm(r.check_out)) { $("ta-sum").textContent = `Check-in has to be before check-out (${fmtTime(r.check_out)}).`; return; }
+    const row = { child_id: cid, att_date: $("ta-date").value, updated_at: new Date().toISOString() };
+    row[k] = t; row[k + "_by"] = me ? me.email : null;
+    if (!r[k] || !r[k + "_sig"]) { row[k + "_name"] = teacherName() + " (staff)"; row[k + "_sig"] = null; }   // keep a parent's signed name if only the time changes
+    b.disabled = true;
+    const { error } = await sb.from("attendance").upsert(row, { onConflict: "child_id,att_date" });
+    b.disabled = false;
+    if (error) { $("ta-sum").textContent = "Couldn't save: " + error.message; return; }
+    taEditing = null; await loadTeacherAtt();
+    $("ta-sum").textContent = `${k === "check_in" ? "Checked in" : "Checked out"} ${kid ? kid.name : ""} at ${fmtTime(t)}. ` + $("ta-sum").textContent;
+  });
   $("ta-date").addEventListener("change", loadTeacherAtt);
   // Clear a child's check-in/out for the day (tap twice): for test or mistaken entries
   $("ta-list").addEventListener("click", async (e) => {

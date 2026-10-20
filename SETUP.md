@@ -110,10 +110,11 @@ or sent anywhere. Children without consent or a profile photo are never matched,
    Tap **Edit** on a child to change these details or to add an email to an existing child.
 
 ## Daily note
-In the **Daily note** tab, the teacher picks a child and fills in today's note: lunch (no / ate some / ate most / ate all),
+In the **Daily note** tab, the teacher picks a date (today by default; earlier days can be edited too) and a child, and fills in the note: lunch (no / ate some / ate most / ate all),
 snack, bowel movement (and how many times), nap (and how long), notes, and the teacher's sign (pre-filled from their Google name).
 Tap an answer again to clear it. There is one note per child per day; saving again updates it.
-The notes list below the form shows which children still need one today; pick another date there to read that day's notes.
+The form stays locked until the child is checked in that day (**Go to Check-in** jumps there).
+The list below shows each child's status for the chosen date (✓ Saved / Not yet / Not checked in) and the saved notes.
 Parents see the note at the top of that day, above the photos.
 
 ## Check-in / check-out
@@ -125,6 +126,8 @@ A check-out time earlier than the check-in time is rejected.
 
 **Home screen app:** in Safari, open the center page → Sign in → Share button → **Add to Home Screen**. It opens full screen with the Sanora icon.
 Teachers see every child's entries for any date in the **Check-in** tab: times, the parent's name and signature, and how many children are here now.
+If a parent forgets, staff tap **Check in** / **Check out** next to the child (time defaults to now; any past date works). These are
+marked **Staff** with the teacher's name instead of a signature. **Change** fixes a recorded time; check-out must be after check-in.
 
 ## Arrival reminders (check in / check out near the daycare)
 1. **Head, once:** (Smiles and Imagination is already set to 4338 Denker Dr, Pleasanton.) To change it, stand at the center, open **☰ → Staff → Center location** and tap **Use my current location as the center**.
