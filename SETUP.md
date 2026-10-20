@@ -95,6 +95,13 @@ photos counts for the whole class).
 In **Photos**, Class photos appear last in each day (or pick *Class photos (no match)* in the filter). Select some and use
 **Move to…** to put them in a child's day so the parents see them, or share or delete them.
 
+**When the face isn't clear** (turned away, side-on, too small): the clothes each matched child is wearing in that upload are
+used as today's outfit. A near-miss face (a little beyond the normal threshold) counts when the clothes below it match that same
+child's outfit (on the phone, by color). Photos still unmatched are sent with clothing-only crops (chin down, no faces, no names,
+labeled "Outfit 1, 2…") to `api/match-outfits.js`, where Claude compares only the clothes; clear matches go to that child's day,
+the rest stay in Class photos. Only children with photo matching turned on are ever matched. These show "Matched by clothes".
+Tip: upload a day's photos together, so the clear-face photos teach the app what everyone is wearing.
+
 Matching runs in the browser with the open-source face-api library (models load once, about 12 MB); no face data is stored
 or sent anywhere. Children without consent or a profile photo are never matched, so their photos land in Class photos.
 
