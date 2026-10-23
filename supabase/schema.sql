@@ -111,6 +111,11 @@ create table if not exists public.daily_notes (
   updated_at    timestamptz not null default now(),
   unique (child_id, note_date)
 );
+-- Incident (a fall, bump, bite…): when, what happened, what was done
+alter table public.daily_notes add column if not exists incident boolean;
+alter table public.daily_notes add column if not exists incident_time time;
+alter table public.daily_notes add column if not exists incident_details text;
+alter table public.daily_notes add column if not exists incident_action text;
 
 -- Check-in / check-out, signed by the parent (one row per child per day)
 create table if not exists public.attendance (

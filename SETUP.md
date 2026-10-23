@@ -118,7 +118,7 @@ or sent anywhere. Children without consent or a profile photo are never matched,
 
 ## Daily note
 In the **Daily note** tab, the teacher picks a date (today by default; earlier days can be edited too) and a child, and fills in the note: lunch (no / ate some / ate most / ate all),
-snack, bowel movement (and how many times), nap (and how long), notes, and the teacher's sign (pre-filled from their Google name).
+snack, bowel movement (and how many times), nap (and how long), **incident** (Yes → time, what happened, action taken), notes, and the teacher's sign (pre-filled from their Google name).
 Tap an answer again to clear it. There is one note per child per day; saving again updates it.
 The form stays locked until the child is checked in that day (**Go to Check-in** jumps there).
 The list below shows each child's status for the chosen date (✓ Saved / Not yet / Not checked in) and the saved notes.

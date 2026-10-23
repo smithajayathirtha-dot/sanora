@@ -213,6 +213,12 @@
   .nrow{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:.95rem}
   .nrow span{color:var(--muted)}
   .note p{margin-top:6px;font-size:.95rem;white-space:pre-wrap}
+  .inc-wrap{display:block}
+  .inc-wrap input{max-width:180px}
+  .note .inc{background:#fbebeb;border-left:4px solid var(--danger);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:.93rem}
+  .note .inc b{color:var(--danger);display:block;margin-bottom:2px}
+  .note .inc div{white-space:pre-wrap}
+  .nstat .incflag{color:var(--danger);font-size:.8rem;font-weight:700;margin-left:6px}
   .note .sign{margin-top:8px;color:var(--muted);font-size:.88rem;font-style:italic}
   .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.85rem;margin:22px 0 4px}
   .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -383,6 +389,13 @@
       <div class="q"><span>Nap</span><div class="seg" data-f="nap">
         <button type="button" data-v="true">Yes</button><button type="button" data-v="false">No</button></div>
         <div class="sub" id="n-slept-wrap" hidden><label for="n-slept">Slept for</label><input id="n-slept" placeholder="e.g. 1h 30m"></div></div>
+      <div class="q"><span>Incident</span><div class="seg" data-f="incident">
+        <button type="button" data-v="true">Yes</button><button type="button" data-v="false">No</button></div>
+        <div class="sub inc-wrap" id="n-inc-wrap" hidden>
+          <label for="n-inc-time">Time</label><input id="n-inc-time" type="time">
+          <label for="n-inc-what">What happened</label><textarea id="n-inc-what" rows="2" placeholder="e.g. Tripped in the yard and bumped his knee"></textarea>
+          <label for="n-inc-action">Action taken</label><textarea id="n-inc-action" rows="2" placeholder="e.g. Cleaned, ice pack for 10 min, comforted; no further concerns"></textarea>
+        </div></div>
       <label for="n-notes">Notes</label>
       <textarea id="n-notes" rows="3" placeholder="Anything parents should know about today"></textarea>
       <label for="n-teacher">Teacher's sign</label>
@@ -1295,7 +1308,7 @@
     const d = nDate(), isToday = d === today();
     $("n-view-title").textContent = isToday ? "Today's notes" : `Notes · ${niceDate(d)}`;
     $("n-status").innerHTML = children.length ? children.map((c) => {
-      const st = todayNotes.has(c.id) ? '<span class="ok">✓ Saved</span>' : checkedIn(c.id) ? '<span class="no">Not yet</span>' : '<span class="gate">Not checked in</span>';
+      const st = todayNotes.has(c.id) ? `<span class="ok">✓ Saved${todayNotes.get(c.id).incident ? '<span class="incflag">⚠ Incident</span>' : ""}</span>` : checkedIn(c.id) ? '<span class="no">Not yet</span>' : '<span class="gate">Not checked in</span>';
       return `<button class="nstat" data-kid="${c.id}"><b>${esc(c.name)}</b>${st}</button>`;
     }).join("") : `<div class="empty">Add children first.</div>`;
     $("n-view-list").innerHTML = children.filter((c) => todayNotes.has(c.id)).map((c) => `<div class="nview"><b>${esc(c.name)}</b>${noteHtml(todayNotes.get(c.id))}</div>`).join("");
@@ -1321,7 +1334,8 @@
     $("n-card").classList.toggle("locked", locked);
     $("n-save").disabled = locked;
     const n = todayNotes.get(cid) || {};
-    noteState = { lunch: n.lunch ?? null, snack: n.snack ?? null, bowel: n.bowel ?? null, nap: n.nap ?? null };
+    noteState = { lunch: n.lunch ?? null, snack: n.snack ?? null, bowel: n.bowel ?? null, nap: n.nap ?? null, incident: n.incident ?? null };
+    $("n-inc-time").value = n.incident_time ? hm(n.incident_time) : ""; $("n-inc-what").value = n.incident_details || ""; $("n-inc-action").value = n.incident_action || "";
     $("n-times").value = n.bowel_times ?? ""; $("n-slept").value = n.nap_duration || "";
     $("n-notes").value = n.notes || ""; $("n-teacher").value = n.teacher_name || teacherName();
     $("n-save").textContent = todayNotes.has(cid) ? "Update note" : "Save note";
@@ -1333,6 +1347,7 @@
     });
     $("n-times-wrap").hidden = noteState.bowel !== true;
     $("n-slept-wrap").hidden = noteState.nap !== true;
+    $("n-inc-wrap").hidden = noteState.incident !== true;
   }
   document.querySelectorAll("#v-notes .seg").forEach((seg) => seg.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -1351,9 +1366,14 @@
       bowel: noteState.bowel, bowel_times: noteState.bowel === true && times > 0 ? times : null,
       nap: noteState.nap, nap_duration: noteState.nap === true ? ($("n-slept").value.trim() || null) : null,
       notes: $("n-notes").value.trim() || null, teacher_name: $("n-teacher").value.trim() || null,
+      incident: noteState.incident,
+      incident_time: noteState.incident === true ? ($("n-inc-time").value || null) : null,
+      incident_details: noteState.incident === true ? ($("n-inc-what").value.trim() || null) : null,
+      incident_action: noteState.incident === true ? ($("n-inc-action").value.trim() || null) : null,
       updated_at: new Date().toISOString()
     };
-    const vals = [row.lunch, row.snack, row.bowel, row.nap, row.notes];
+    if (row.incident === true && !row.incident_details) { say("n-msg", "Describe what happened in the incident.", "err"); return; }
+    const vals = [row.lunch, row.snack, row.bowel, row.nap, row.notes, row.incident];
     if (vals.every((v) => v === null)) { say("n-msg", "Fill in at least one item before saving.", "err"); return; }
     $("n-save").disabled = true;
     const { error } = await sb.from("daily_notes").upsert(row, { onConflict: "child_id,note_date" });
@@ -1369,7 +1389,9 @@
     if (n.snack !== null && n.snack !== undefined) rows.push(["Snack", n.snack ? "Yes" : "No"]);
     if (n.bowel !== null && n.bowel !== undefined) rows.push(["Bowel movement", n.bowel ? (n.bowel_times ? `Yes · ${n.bowel_times} time${n.bowel_times > 1 ? "s" : ""}` : "Yes") : "No"]);
     if (n.nap !== null && n.nap !== undefined) rows.push(["Nap", n.nap ? (n.nap_duration ? `Yes · slept ${n.nap_duration}` : "Yes") : "No"]);
-    return `<div class="note"><h3>Daily note</h3>${rows.map(([k, v]) => `<div class="nrow"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}${n.notes ? `<p>${esc(n.notes)}</p>` : ""}${n.teacher_name ? `<div class="sign">— ${esc(n.teacher_name)}</div>` : ""}</div>`;
+    if (n.incident === false) rows.push(["Incident", "None"]);
+    const inc = n.incident ? `<div class="inc"><b>⚠ Incident${n.incident_time ? " · " + fmtTime(n.incident_time) : ""}</b>${n.incident_details ? `<div>${esc(n.incident_details)}</div>` : ""}${n.incident_action ? `<div><i>Action taken:</i> ${esc(n.incident_action)}</div>` : ""}</div>` : "";
+    return `<div class="note"><h3>Daily note</h3>${rows.map(([k, v]) => `<div class="nrow"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}${inc}${n.notes ? `<p>${esc(n.notes)}</p>` : ""}${n.teacher_name ? `<div class="sign">— ${esc(n.teacher_name)}</div>` : ""}</div>`;
   }
 
   // ---------- check-in / check-out ----------
