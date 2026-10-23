@@ -1334,7 +1334,7 @@
     $("n-card").classList.toggle("locked", locked);
     $("n-save").disabled = locked;
     const n = todayNotes.get(cid) || {};
-    noteState = { lunch: n.lunch ?? null, snack: n.snack ?? null, bowel: n.bowel ?? null, nap: n.nap ?? null, incident: n.incident ?? null };
+    noteState = { lunch: n.lunch ?? null, snack: n.snack ?? null, bowel: n.bowel ?? null, nap: n.nap ?? null, incident: n.incident ?? false };   // No unless a teacher picks Yes
     $("n-inc-time").value = n.incident_time ? hm(n.incident_time) : ""; $("n-inc-what").value = n.incident_details || ""; $("n-inc-action").value = n.incident_action || "";
     $("n-times").value = n.bowel_times ?? ""; $("n-slept").value = n.nap_duration || "";
     $("n-notes").value = n.notes || ""; $("n-teacher").value = n.teacher_name || teacherName();
@@ -1373,7 +1373,7 @@
       updated_at: new Date().toISOString()
     };
     if (row.incident === true && !row.incident_details) { say("n-msg", "Describe what happened in the incident.", "err"); return; }
-    const vals = [row.lunch, row.snack, row.bowel, row.nap, row.notes, row.incident];
+    const vals = [row.lunch, row.snack, row.bowel, row.nap, row.notes, row.incident || null];   // the default No alone doesn't make a note
     if (vals.every((v) => v === null)) { say("n-msg", "Fill in at least one item before saving.", "err"); return; }
     $("n-save").disabled = true;
     const { error } = await sb.from("daily_notes").upsert(row, { onConflict: "child_id,note_date" });
